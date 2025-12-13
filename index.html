@@ -1,203 +1,145 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MAHTAB Private Server</title>
-  <style>
-    /* Reset the default styles */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+<meta charset="UTF-8">
+<title>MAHTAB HACK V19</title>
 
-    body {
-      font-family: Arial, sans-serif;
-      background-color: black;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      flex-direction: column;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    /* Snow Animation */
-    .snow-container {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: -1;
-    }
-
-    .snow {
-      position: absolute;
-      width: 5px;
-      height: 5px;
-      background-color: white;
-      opacity: 0.7;
-      animation: snow 10s linear infinite;
-    }
-
-    @keyframes snow {
-      0% { transform: translateY(-100px) translateX(0); }
-      100% { transform: translateY(100vh) translateX(50px); }
-    }
-
-    /* Container styles */
-    .container {
-      z-index: 2;
-      margin-top: -50px;
-    }
-
-    h1 {
-      font-size: 3rem;
-      margin-bottom: 20px;
-    }
-
-    .prediction-buttons button {
-      font-size: 1.5rem;
-      padding: 15px 30px;
-      margin: 10px;
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-
-    button:hover {
-      opacity: 0.8;
-    }
-
-    #greenBtn {
-      background-color: green;
-      color: white;
-    }
-
-    #redBtn {
-      background-color: red;
-      color: white;
-    }
-
-    .timer {
-      font-size: 2rem;
-      margin-top: 20px;
-    }
-
-    .result {
-      font-size: 2rem;
-      margin-top: 20px;
-      display: none;
-    }
-
-    .green-result {
-      color: green;
-    }
-
-    .red-result {
-      color: red;
-    }
-  </style>
+<style>
+body{
+  background:#0b0b0b;
+  font-family:Arial;
+  color:#fff;
+  display:flex;
+  justify-content:center;
+}
+.app{
+  width:360px;
+  text-align:center;
+}
+#timer{
+  font-size:40px;
+  margin:15px 0;
+}
+.box{
+  padding:30px;
+  font-size:32px;
+  border-radius:15px;
+  margin:15px 0;
+  animation:pulse 1s infinite;
+}
+.red{background:#ff3b3b;}
+.green{background:#2ecc71;}
+.violet{background:#9b59b6;}
+@keyframes pulse{
+  0%{transform:scale(1);}
+  50%{transform:scale(1.05);}
+  100%{transform:scale(1);}
+}
+ul{list-style:none;padding:0;}
+li{
+  padding:8px;
+  margin:5px 0;
+  border-radius:10px;
+}
+</style>
 </head>
+
 <body>
-  <div class="snow-container"></div>
-  <div class="container">
-    <h1>MAHTAB Private Server</h1>
-    <p>Make your prediction!</p>
-    <div class="prediction-buttons">
-      <button id="greenBtn">Green</button>
-      <button id="redBtn">Red</button>
-    </div>
-    <div id="timer" class="timer">01:00</div>
-    <div id="result" class="result"></div>
+
+<div class="app">
+  <h2>MAHTAB HACK V19</h2>
+
+  <div id="timer">03:00</div>
+
+  <div id="prediction" class="box green">
+    NEXT COLOR
   </div>
 
-  <script>
-    // Variables
-    let timer = 60;
-    let timerInterval;
-    let predictionMade = false;
-    let snowflakes = [];
+  <h3>Last Results</h3>
+  <ul id="history"></ul>
+</div>
 
-    // Elements
-    const timerDisplay = document.getElementById('timer');
-    const resultDisplay = document.getElementById('result');
-    const greenBtn = document.getElementById('greenBtn');
-    const redBtn = document.getElementById('redBtn');
-    const snowContainer = document.querySelector('.snow-container');
+<audio id="sound" src="https://assets.mixkit.co/active_storage/sfx/2577/2577-preview.mp3"></audio>
 
-    // Start Timer Function
-    function startTimer() {
-      timerInterval = setInterval(() => {
-        if (timer > 0) {
-          timer--;
-          const minutes = Math.floor(timer / 60);
-          const seconds = timer % 60;
-          timerDisplay.textContent = `${minutes < 10 ? '0' + minutes : minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
-        } else {
-          clearInterval(timerInterval);
-          showResult();
-        }
-      }, 1000);
-    }
+<!-- 🔥 FIREBASE + LOGIC -->
+<script type="module">
 
-    // Show Result Function
-    function showResult() {
-      // Simulate prediction outcome
-      const correctPrediction = Math.random() < 0.5; // 50% chance for a correct prediction
+/* ✅ FIREBASE CDN (WEB READY) */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-      if (correctPrediction) {
-        resultDisplay.textContent = 'Prediction: Correct!';
-        resultDisplay.classList.add('green-result');
-        resultDisplay.classList.remove('red-result');
-      } else {
-        resultDisplay.textContent = 'Prediction: Incorrect!';
-        resultDisplay.classList.add('red-result');
-        resultDisplay.classList.remove('green-result');
-      }
+/* ✅ YOUR FIREBASE CONFIG (CONNECTED) */
+const firebaseConfig = {
+  apiKey: "AIzaSyDnkwQk4Y11adyGkiCog4H8xi_ZjCgHUaE",
+  authDomain: "clubpkr-87519.firebaseapp.com",
+  databaseURL: "https://clubpkr-87519-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "clubpkr-87519",
+  storageBucket: "clubpkr-87519.firebasestorage.app",
+  messagingSenderId: "323435934947",
+  appId: "1:323435934947:web:97568617db4f891ce281d6"
+};
 
-      resultDisplay.style.display = 'block';
-    }
+/* INIT */
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-    // Generate Snowflakes
-    function generateSnowflakes() {
-      const snowflakeCount = 100;
-      
-      for (let i = 0; i < snowflakeCount; i++) {
-        const snowflake = document.createElement('div');
-        snowflake.classList.add('snow');
-        snowflake.style.left = `${Math.random() * 100}vw`;
-        snowflake.style.animationDuration = `${Math.random() * 3 + 5}s`;
-        snowflake.style.animationDelay = `${Math.random() * 5}s`;
+/* ELEMENTS */
+const historyEl = document.getElementById("history");
+const predBox = document.getElementById("prediction");
+const sound = document.getElementById("sound");
+const timerEl = document.getElementById("timer");
 
-        snowflakes.push(snowflake);
-        snowContainer.appendChild(snowflake);
-      }
-    }
+/* 🔥 LIVE DATA FROM FIREBASE */
+onValue(ref(db, "p_time01"), snap => {
+  const data = snap.val();
+  if (!data) return;
 
-    // Button Event Listeners
-    greenBtn.addEventListener('click', () => {
-      if (!predictionMade) {
-        predictionMade = true;
-        startTimer();
-      }
-    });
+  // ✅ SORT BY PERIOD (FIXED)
+  const rows = Object.values(data)
+    .filter(r => r && r.period)
+    .sort((a,b)=>Number(a.period)-Number(b.period));
 
-    redBtn.addEventListener('click', () => {
-      if (!predictionMade) {
-        predictionMade = true;
-        startTimer();
-      }
-    });
+  historyEl.innerHTML = "";
 
-    // Initialize
-    generateSnowflakes();
-  </script>
+  rows.slice(-10).reverse().forEach(r=>{
+    const li=document.createElement("li");
+    li.textContent = `${r.period} → ${r.color.toUpperCase()}`;
+    li.className = r.color;
+    historyEl.appendChild(li);
+  });
+
+  predict(rows);
+});
+
+/* 🔮 COLOR PREDICTION */
+function predict(rows){
+  if(rows.length < 2) return;
+
+  const last = rows[rows.length-1].color;
+  const prev = rows[rows.length-2].color;
+
+  let next;
+  if(last === prev){
+    next = last === "red" ? "green" : "red";
+  }else{
+    next = ["red","green","violet"][Math.floor(Math.random()*3)];
+  }
+
+  predBox.className = `box ${next}`;
+  predBox.innerText = `NEXT: ${next.toUpperCase()}`;
+  sound.play();
+}
+
+/* ⏱️ 3-MINUTE TIMER */
+let sec = 180;
+setInterval(()=>{
+  sec--;
+  if(sec <= 0) sec = 180;
+  let m = String(Math.floor(sec/60)).padStart(2,"0");
+  let s = String(sec%60).padStart(2,"0");
+  timerEl.innerText = `${m}:${s}`;
+},1000);
+
+</script>
 </body>
 </html>
