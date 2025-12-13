@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MAHTAB HACK V5.1 - Color Prediction</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Dark Mode UI */
+        /* Premium Dark Mode UI */
         body {
-            font-family: 'Arial', sans-serif;
-            background-color: #121212; /* Dark Background */
-            color: #E0E0E0;
+            font-family: 'Poppins', sans-serif;
+            background-color: #0A0A0A; /* Deep Dark Background */
+            color: #F0F0F0;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -20,65 +21,83 @@
         }
 
         .container {
-            background-color: #1F1F1F;
+            background-color: #1A1A1A;
             padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
             width: 100%;
-            max-width: 400px;
+            max-width: 450px;
             text-align: center;
+            border: 1px solid #333; /* Subtle border for definition */
         }
 
         h1 {
             color: #4CAF50; /* Primary Green Accent */
+            margin-bottom: 5px;
+            font-size: 2em;
+            letter-spacing: 1px;
+        }
+
+        p.subtitle {
+            color: #AAAAAA;
             margin-bottom: 30px;
-            font-size: 1.8em;
+            font-size: 0.9em;
         }
 
         /* Timer Styles and Animation */
-        #timer-display {
-            font-size: 3em;
-            font-weight: bold;
-            color: #FFC107; /* Gold/Yellow Accent for Timer */
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 3px solid #FFC107;
-            border-radius: 8px;
-            transition: transform 0.3s ease-in-out;
+        #timer-box {
+            background-color: #2C2C2C;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
         }
 
-        #timer-display.running {
-            animation: pulse 1s infinite alternate;
+        #timer-display {
+            font-size: 4em;
+            font-weight: 700;
+            color: #FFC107; /* Gold/Yellow Accent for Timer */
+            transition: color 0.3s ease;
+        }
+        
+        /* Pulse Animation for Timer */
+        .running {
+            animation: pulse 1.5s infinite alternate;
         }
 
         @keyframes pulse {
-            from { transform: scale(1); }
-            to { transform: scale(1.05); }
+            from { opacity: 1; }
+            to { opacity: 0.8; }
         }
 
         /* Result Display and Animation */
         #result-display {
-            font-size: 2.5em;
-            font-weight: bold;
-            height: 50px;
+            font-size: 2.8em;
+            font-weight: 700;
+            height: 60px;
+            line-height: 60px;
             display: flex;
             justify-content: center;
             align-items: center;
-            margin-top: 20px;
-            border-radius: 8px;
-            color: #121212;
+            margin-top: 30px;
+            border-radius: 10px;
+            color: #1A1A1A;
             opacity: 0;
-            transition: opacity 0.5s ease-out;
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            transform: scale(0.9);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
         }
 
         #result-display.show {
             opacity: 1;
-            animation: zoomIn 0.5s ease-out;
+            transform: scale(1);
+            /* Winning Animation: Quick bounce/zoom */
+            animation: zoomInBounce 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
         }
 
-        @keyframes zoomIn {
-            from { transform: scale(0.8); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
+        @keyframes zoomInBounce {
+            0% { transform: scale(0.5); opacity: 0; }
+            80% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         .red-bg { background-color: #FF4136; }
@@ -88,71 +107,94 @@
         .buttons-grid {
             display: flex;
             justify-content: space-around;
-            gap: 20px;
+            gap: 15px;
             margin-top: 30px;
         }
 
         .prediction-button {
-            width: 100%;
-            padding: 15px;
-            font-size: 1.2em;
-            font-weight: bold;
+            width: 50%;
+            padding: 15px 10px;
+            font-size: 1.1em;
+            font-weight: 600;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             transition: transform 0.1s, box-shadow 0.2s;
             color: white;
+            letter-spacing: 1px;
         }
 
         .prediction-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
         }
 
-        .red-btn { background-color: #FF4136; }
-        .green-btn { background-color: #2ECC40; }
-
-        .red-btn:active, .green-btn:active {
-            transform: scale(0.98);
+        .red-btn { 
+            background-color: #C0392B; 
+            border-bottom: 4px solid #922B21; 
         }
+        .green-btn { 
+            background-color: #27AE60; 
+            border-bottom: 4px solid #1E8449; 
+        }
+
+        .prediction-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+            border-bottom-width: 0px;
+            opacity: 0.9;
+        }
+
     </style>
 </head>
 <body>
 
     <div class="container">
         <h1>MAHTAB HACK V5.1</h1>
-        <p>अगला रंग 30 सेकंड में.</p>
+        <p class="subtitle">अगले 30 सेकंड में परिणाम ऑटो-शो होगा।</p>
         
-        <div id="timer-display" class="running">30</div>
+        <div id="timer-box">
+            <div id="timer-display">30</div>
+            <p style="font-size: 0.9em; margin: 0; color: #757575;">सेकंड बचे हैं</p>
+        </div>
         
         <div id="result-display"></div>
 
         <div class="buttons-grid">
-            <button class="prediction-button red-btn" onclick="predictColor('Red')">RED</button>
-            <button class="prediction-button green-btn" onclick="predictColor('Green')">GREEN</button>
+            <button class="prediction-button red-btn" onclick="predictColor('Red')">RED BET</button>
+            <button class="prediction-button green-btn" onclick="predictColor('Green')">GREEN BET</button>
         </div>
-        <p style="margin-top: 20px; font-size: 0.8em; color: #757575;">यह परिणाम यादृच्छिक रूप से (Randomly) दिखाया जाता है।</p>
     </div>
 
     <script>
         const timerDisplay = document.getElementById('timer-display');
         const resultDisplay = document.getElementById('result-display');
+        const timerBox = document.getElementById('timer-box');
+        
         let timer;
-        const initialTime = 30;
+        const INITIAL_TIME = 30; // 30 seconds cycle
+        const RESULT_DISPLAY_DURATION = 5000; // Show result for 5 seconds
 
-        // Prediction Function (For demonstration only)
+        // Function to handle user's prediction (Placeholder)
         function predictColor(color) {
+            // In a real app, this function would send the user's bet (e.g., color and amount) 
+            // to the server before the result is shown.
             console.log(`User predicted: ${color}`);
-            // यहाँ आप यूज़र की भविष्यवाणी को स्टोर कर सकते हैं
+            alert(`आपने ${color} पर दाँव लगाया। परिणाम के लिए प्रतीक्षा करें!`);
         }
 
-        // Timer and Result Logic
-        function startTimer() {
-            let timeLeft = initialTime;
-            timerDisplay.textContent = timeLeft;
-            resultDisplay.classList.remove('show', 'red-bg', 'green-bg');
-            timerDisplay.classList.add('running');
+        // --- Algorithm Implementation ---
 
+        function startTimer() {
+            let timeLeft = INITIAL_TIME;
+            
+            // 1. Initial Setup and UI Reset
+            resultDisplay.classList.remove('show', 'red-bg', 'green-bg');
+            resultDisplay.textContent = "";
+            timerDisplay.textContent = timeLeft;
+            timerBox.classList.add('running');
+
+            // 2. Timer Control (Runs every second)
             timer = setInterval(() => {
                 timeLeft--;
                 timerDisplay.textContent = timeLeft;
@@ -165,22 +207,28 @@
         }
 
         function showResult() {
-            timerDisplay.classList.remove('running');
+            // 3. Result Determination and Display
+            timerBox.classList.remove('running');
             timerDisplay.textContent = "0";
 
-            // Random Result Generation (Simulated RNG)
-            const isRed = Math.random() < 0.5;
+            // 3.1 Random Result Generation (Simulating Server RNG)
+            const isRed = Math.random() < 0.5; // 50% chance for Red, 50% for Green
             const winningColor = isRed ? 'RED' : 'GREEN';
             const winningClass = isRed ? 'red-bg' : 'green-bg';
 
-            resultDisplay.textContent = winningColor;
+            // 3.2 UI Update with Animation
+            resultDisplay.textContent = winningColor + " WINS!";
             resultDisplay.classList.add('show', winningClass);
-
-            // Restart timer after a delay
-            setTimeout(startTimer, 5000);
+            
+            // 3.3 Next Cycle Preparation
+            // Wait for 5 seconds (RESULT_DISPLAY_DURATION) before restarting the timer
+            setTimeout(() => {
+                console.log("Starting new game cycle...");
+                startTimer();
+            }, RESULT_DISPLAY_DURATION);
         }
 
-        // Start the game on load
+        // Start the game cycle when the page loads
         window.onload = startTimer;
     </script>
 
