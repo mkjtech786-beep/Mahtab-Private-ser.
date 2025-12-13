@@ -1,199 +1,203 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MAHTAB HACK V5.1 - Auto Result Display</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;900&display=swap" rel="stylesheet">
-    <style>
-        /* VIP/Premium Dark Mode UI */
-        :root {
-            --bg-color: #0D1117; /* Deep Orbital Black */
-            --card-color: #161B22;
-            --text-color: #E6EDF3;
-            --accent-gold: #FFD700;
-            --red-glow: #FF4136;
-            --green-glow: #2ECC40;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAHTAB Private Server</title>
+  <style>
+    /* Reset the default styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        body {
-            font-family: 'Montserrat', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-            flex-direction: column;
-        }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: black;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
 
-        .container {
-            background-color: var(--card-color);
-            padding: 40px;
-            border-radius: 18px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 
-                        inset 0 0 10px rgba(255, 255, 255, 0.05);
-            width: 100%;
-            max-width: 480px;
-            text-align: center;
-            border: 1px solid #30363D;
-        }
+    /* Snow Animation */
+    .snow-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+    }
 
-        h1 {
-            color: var(--accent-gold); 
-            margin-bottom: 5px;
-            font-size: 2.2em;
-            font-weight: 900;
-            letter-spacing: 2px;
-            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
-        }
+    .snow {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      background-color: white;
+      opacity: 0.7;
+      animation: snow 10s linear infinite;
+    }
 
-        p.subtitle {
-            color: #8B949E;
-            margin-bottom: 30px;
-            font-size: 1em;
-            font-weight: 500;
-        }
+    @keyframes snow {
+      0% { transform: translateY(-100px) translateX(0); }
+      100% { transform: translateY(100vh) translateX(50px); }
+    }
 
-        /* Timer Box */
-        #timer-box {
-            background-color: var(--bg-color);
-            padding: 20px 0;
-            border-radius: 12px;
-            margin-bottom: 25px;
-            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8), 0 5px 15px rgba(0, 0, 0, 0.5);
-            border: 1px solid #30363D;
-        }
+    /* Container styles */
+    .container {
+      z-index: 2;
+      margin-top: -50px;
+    }
 
-        #timer-display {
-            font-size: 4.5em;
-            font-weight: 900;
-            color: var(--accent-gold); 
-            text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
-        }
-        
-        /* Time remaining text */
-        .time-label {
-            font-size: 1em; margin: 0; color: #8B949E;
-        }
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 20px;
+    }
 
-        .running {
-            animation: pulse 1.2s infinite alternate;
-        }
+    .prediction-buttons button {
+      font-size: 1.5rem;
+      padding: 15px 30px;
+      margin: 10px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
 
-        /* Result Display - High Impact */
-        #result-display {
-            font-size: 3.2em;
-            font-weight: 900;
-            height: 70px;
-            line-height: 70px;
-            margin-top: 30px;
-            border-radius: 10px;
-            color: var(--text-color);
-            opacity: 0;
-            transform: scale(0.9);
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
-            transition: all 0.5s ease-out;
-        }
-        
-        #result-display.show {
-            opacity: 1;
-            transform: scale(1);
-            /* Zoom In Animation */
-            animation: zoomInBounce 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-        }
+    button:hover {
+      opacity: 0.8;
+    }
 
-        .red-bg { 
-            background: linear-gradient(145deg, #a71d2a, #d82d3e);
-            box-shadow: 0 0 20px var(--red-glow), inset 0 0 10px rgba(255, 255, 255, 0.3);
-        }
-        .green-bg { 
-            background: linear-gradient(145deg, #1f7a2f, #32cd32);
-            box-shadow: 0 0 20px var(--green-glow), inset 0 0 10px rgba(255, 255, 255, 0.3);
-        }
+    #greenBtn {
+      background-color: green;
+      color: white;
+    }
 
-    </style>
+    #redBtn {
+      background-color: red;
+      color: white;
+    }
+
+    .timer {
+      font-size: 2rem;
+      margin-top: 20px;
+    }
+
+    .result {
+      font-size: 2rem;
+      margin-top: 20px;
+      display: none;
+    }
+
+    .green-result {
+      color: green;
+    }
+
+    .red-result {
+      color: red;
+    }
+  </style>
 </head>
 <body>
-
-    <div class="container">
-        <h1>MAHTAB HACK V5.1</h1>
-        <p class="subtitle">🔴 1 MINUTE AUTO RESULT DEMO 🟢</p>
-        
-        <div id="timer-box">
-            <div id="timer-display">60</div>
-            <p class="time-label">Remaining Seconds</p>
-        </div>
-        
-        <div id="result-display"></div>
-
-        <p style="margin-top: 20px; color: #8B949E; font-size: 0.9em;">(System is running in fully automated mode)</p>
+  <div class="snow-container"></div>
+  <div class="container">
+    <h1>MAHTAB Private Server</h1>
+    <p>Make your prediction!</p>
+    <div class="prediction-buttons">
+      <button id="greenBtn">Green</button>
+      <button id="redBtn">Red</button>
     </div>
+    <div id="timer" class="timer">01:00</div>
+    <div id="result" class="result"></div>
+  </div>
 
-    <script>
-        const timerDisplay = document.getElementById('timer-display');
-        const resultDisplay = document.getElementById('result-display');
-        const timerBox = document.getElementById('timer-box');
-        
-        let timer;
-        const INITIAL_TIME = 60; // 1 minute (60 seconds)
-        const RESULT_DISPLAY_DURATION = 5000; // Show result for 5 seconds
-        let cycleCount = 1;
+  <script>
+    // Variables
+    let timer = 60;
+    let timerInterval;
+    let predictionMade = false;
+    let snowflakes = [];
 
-        // Helper function to format seconds into MM:SS
-        function formatTime(totalSeconds) {
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    // Elements
+    const timerDisplay = document.getElementById('timer');
+    const resultDisplay = document.getElementById('result');
+    const greenBtn = document.getElementById('greenBtn');
+    const redBtn = document.getElementById('redBtn');
+    const snowContainer = document.querySelector('.snow-container');
+
+    // Start Timer Function
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        if (timer > 0) {
+          timer--;
+          const minutes = Math.floor(timer / 60);
+          const seconds = timer % 60;
+          timerDisplay.textContent = `${minutes < 10 ? '0' + minutes : minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+        } else {
+          clearInterval(timerInterval);
+          showResult();
         }
+      }, 1000);
+    }
 
-        function startTimer() {
-            let timeLeft = INITIAL_TIME;
-            
-            // 1. Initial Setup and UI Reset
-            resultDisplay.classList.remove('show', 'red-bg', 'green-bg');
-            resultDisplay.textContent = "Waiting for Cycle " + cycleCount + "...";
-            timerDisplay.textContent = formatTime(timeLeft);
-            timerBox.classList.add('running');
+    // Show Result Function
+    function showResult() {
+      // Simulate prediction outcome
+      const correctPrediction = Math.random() < 0.5; // 50% chance for a correct prediction
 
-            // 2. Timer Control (Runs every second)
-            timer = setInterval(() => {
-                timeLeft--;
-                timerDisplay.textContent = formatTime(timeLeft);
+      if (correctPrediction) {
+        resultDisplay.textContent = 'Prediction: Correct!';
+        resultDisplay.classList.add('green-result');
+        resultDisplay.classList.remove('red-result');
+      } else {
+        resultDisplay.textContent = 'Prediction: Incorrect!';
+        resultDisplay.classList.add('red-result');
+        resultDisplay.classList.remove('green-result');
+      }
 
-                if (timeLeft <= 0) {
-                    clearInterval(timer);
-                    showResult();
-                }
-            }, 1000);
-        }
+      resultDisplay.style.display = 'block';
+    }
 
-        function showResult() {
-            // 3. Result Determination
-            timerBox.classList.remove('running');
-            timerDisplay.textContent = "00:00";
+    // Generate Snowflakes
+    function generateSnowflakes() {
+      const snowflakeCount = 100;
+      
+      for (let i = 0; i < snowflakeCount; i++) {
+        const snowflake = document.createElement('div');
+        snowflake.classList.add('snow');
+        snowflake.style.left = `${Math.random() * 100}vw`;
+        snowflake.style.animationDuration = `${Math.random() * 3 + 5}s`;
+        snowflake.style.animationDelay = `${Math.random() * 5}s`;
 
-            // 3.1 Random Result Generation (Simulating Server RNG)
-            const isRed = Math.random() < 0.5;
-            const winningColor = isRed ? 'RED' : 'GREEN';
-            const winningClass = isRed ? 'red-bg' : 'green-bg';
+        snowflakes.push(snowflake);
+        snowContainer.appendChild(snowflake);
+      }
+    }
 
-            // 3.2 UI Update with Animation
-            resultDisplay.textContent = winningColor;
-            resultDisplay.classList.add('show', winningClass);
+    // Button Event Listeners
+    greenBtn.addEventListener('click', () => {
+      if (!predictionMade) {
+        predictionMade = true;
+        startTimer();
+      }
+    });
 
-            // 4. Next Cycle Preparation
-            setTimeout(() => {
-                cycleCount++;
-                startTimer();
-            }, RESULT_DISPLAY_DURATION);
-        }
+    redBtn.addEventListener('click', () => {
+      if (!predictionMade) {
+        predictionMade = true;
+        startTimer();
+      }
+    });
 
-        // Start the game cycle when the page loads
-        window.onload = startTimer;
-    </script>
-
+    // Initialize
+    generateSnowflakes();
+  </script>
 </body>
 </html>
