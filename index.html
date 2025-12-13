@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAHTAB HACK 4.1</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+            color: #ecf0f1;
+        }
+
+        #app {
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+            padding: 30px;
+            background: #34495e;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+            color: #1abc9c;
+        }
+
+        /* Timer Styles */
+        #timer {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 40px;
+            padding: 10px;
+            background: #1abc9c;
+            color: #fff;
+            border-radius: 5px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Prediction Result */
+        #prediction-result {
+            font-size: 2rem;
+            font-weight: bold;
+            display: none;
+            padding: 20px;
+            margin-top: 30px;
+            border-radius: 10px;
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+
+        .green {
+            color: #2ecc71;
+            background: rgba(46, 204, 113, 0.1);
+            box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+        }
+
+        .red {
+            color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Animation */
+        #animation {
+            width: 120px;
+            height: 120px;
+            margin: 30px auto;
+            background-color: #3498db;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.7);
+            animation: bounce 1s infinite alternate;
+        }
+
+        @keyframes bounce {
+            0% {
+                transform: translateY(0);
+            }
+            100% {
+                transform: translateY(-20px);
+            }
+        }
+
+        /* Button for triggering animation */
+        .button {
+            background: #e74c3c;
+            padding: 15px 40px;
+            color: #fff;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            margin-top: 30px;
+            box-shadow: 0 6px 15px rgba(231, 76, 60, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .button:hover {
+            background: #c0392b;
+            transform: scale(1.1);
+        }
+
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>MAHTAB HACK 4.1</h1>
+        <div id="timer">Time Left: 60s</div>
+        <div id="animation"></div>
+        <div id="prediction-result" class="hidden">
+            <div id="result-text"></div>
+        </div>
+        <button class="button" onclick="startTimer()">Start Prediction</button>
+    </div>
+
+    <script>
+        let timer = 60;  // Timer set to 60 seconds
+        let interval;
+        let resultText = document.getElementById('result-text');
+        let resultDiv = document.getElementById('prediction-result');
+        let timerDiv = document.getElementById('timer');
+        let animationDiv = document.getElementById('animation');
+
+        // Start the timer countdown
+        function startTimer() {
+            interval = setInterval(function() {
+                timer--;
+                timerDiv.innerText = `Time Left: ${timer}s`;
+
+                if (timer <= 0) {
+                    clearInterval(interval);
+                    showPredictionResult();
+                }
+            }, 1000);
+        }
+
+        // Show Prediction Result with Animation
+        function showPredictionResult() {
+            let isPredictionSuccessful = Math.random() > 0.5;
+
+            // Show the result with animation effect
+            setTimeout(function() {
+                if (isPredictionSuccessful) {
+                    resultText.innerText = "Prediction: SUCCESS";
+                    resultDiv.className = "green";
+                } else {
+                    resultText.innerText = "Prediction: FAILURE";
+                    resultDiv.className = "red";
+                }
+
+                resultDiv.style.display = 'block';
+                resultDiv.style.opacity = 1; // Fade in effect
+            }, 500); // Delay for animation
+        }
+    </script>
+</body>
+</html>
