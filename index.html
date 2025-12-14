@@ -9,16 +9,15 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
   import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
-  // ✅ Firebase Config (from user)
+  // ✅ User Firebase config
   const firebaseConfig = {
-    apiKey: "AIzaSyDnkwQk4Y11adyGkiCog4H8xi_ZjCgHUaE",
-    authDomain: "clubpkr-87519.firebaseapp.com",
-    databaseURL: "https://clubpkr-87519-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "clubpkr-87519",
-    storageBucket: "clubpkr-87519.firebasestorage.app",
-    messagingSenderId: "323435934947",
-    appId: "1:323435934947:web:10abb03f4be9d8f2e281d6",
-    measurementId: "G-ZR9F5KJWDW"
+    apiKey: "AIzaSyAqfguS1ucAtklcl06eB1JIWQr46XMpe7g",
+    authDomain: "safe-chat-c0b9c.firebaseapp.com",
+    databaseURL: "https://safe-chat-c0b9c-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "safe-chat-c0b9c",
+    storageBucket: "safe-chat-c0b9c.firebasestorage.app",
+    messagingSenderId: "119640275300",
+    appId: "1:119640275300:web:20ae984f4af1ffe6a62271"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -134,7 +133,10 @@ function sendMsg(){
     text: text,
     time: timeNow()
   };
-  push(messagesRef, msgObj);
+
+  push(messagesRef, msgObj)
+    .then(()=>console.log("Message sent"))
+    .catch(e=>console.error("Firebase push error:", e));
 
   input.value="";
   typing.style.display="none";
