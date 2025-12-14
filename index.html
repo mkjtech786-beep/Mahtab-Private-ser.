@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Telegram Chat V4 PRO</title>
+<title>Telegram Support Chat</title>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
@@ -30,14 +30,14 @@ body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:
 .header-title{color:#d4af37;font-weight:bold}
 .header-status{font-size:12px;color:#8f8f8f}
 .admin-bar{display:none;background:#d4af37;color:#000;text-align:center;font-size:12px;padding:6px;font-weight:bold}
-.messages{flex:1;padding:12px;overflow-y:auto}
+.messages{flex:1;padding:12px;overflow-y:auto;background:#0f0f0f}
 .msg{max-width:78%;padding:10px 12px;margin-bottom:10px;border-radius:14px;font-size:14px}
 .user{background:#1f2a33;color:#fff;margin-left:auto}
 .admin{background:#d4af37;color:#000;margin-right:auto}
 .meta{font-size:10px;opacity:.6;margin-top:4px}
 .input-box{display:flex;padding:10px;background:#161616}
 .input-box input{flex:1;padding:11px;border:none;border-radius:12px;background:#0f0f0f;color:#fff}
-.input-box button{margin-left:8px;padding:11px 16px;border:none;border-radius:12px;background:#d4af37;color:#000;font-weight:bold}
+.input-box button{margin-left:8px;padding:11px 16px;border:none;border-radius:12px;background:#d4af37;color:#000;font-weight:bold;cursor:pointer}
 </style>
 </head>
 
@@ -46,7 +46,7 @@ body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:
 <div class="chat">
   <div class="header">
     <div class="header-title" id="title">Telegram Help</div>
-    <div class="header-status" id="status">online</div>
+    <div class="header-status">online</div>
   </div>
 
   <div class="admin-bar" id="adminBar">👑 ADMIN MODE</div>
@@ -64,7 +64,7 @@ import { ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.6
 /* UNIQUE USER ID */
 let userId = localStorage.getItem("support_uid");
 if (!userId) {
-  userId = "user_" + Math.random().toString(36).substr(2, 9);
+  userId = "user_" + Math.random().toString(36).substr(2, 8);
   localStorage.setItem("support_uid", userId);
 }
 
@@ -80,36 +80,80 @@ const adminBar = document.getElementById("adminBar");
 const title = document.getElementById("title");
 
 /* TIME */
-const timeNow = () => new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+const timeNow = () =>
+  new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-/* 🔑 PRIVATE CHAT PATH */
-const chatRef = ref(window.db, "supportChats/" + userId + "/messages");
+/* ================= USER LISTENER ================= */
+function startUserChat() {
+  const userChatRef = ref(window.db, "supportChats/" + userId + "/messages");
 
-/* READ */
-onChildAdded(chatRef, (snap) => {
-  const m = snap.val();
-  const d = document.createElement("div");
-  d.className = "msg " + (m.sender === "admin" ? "admin" : "user");
-  d.innerHTML = m.text + `<div class="meta">${m.time}</div>`;
-  messages.appendChild(d);
-  messages.scrollTop = messages.scrollHeight;
-});
+  onChildAdded(userChatRef, (snap) => {
+    const m = snap.val();
+    const d = document.createElement("div");
+    d.className = "msg " + (m.sender === "admin" ? "admin" : "user");
+    d.innerHTML = m.text + `<div class="meta">${m.time}</div>`;
+    messages.appendChild(d);
+    messages.scrollTop = messages.scrollHeight;
+  });
+}
 
-/* SEND */
+/* ================= ADMIN LISTENER ================= */
+function startAdminChat() {
+  const allChatsRef = ref(window.db, "supportChats");
+
+  onChildAdded(allChatsRef, (userSnap) => {
+    const uid = userSnap.key;
+
+    onChildAdded(
+      ref(window.db, "supportChats/" + uid + "/messages"),
+      (msgSnap) => {
+        const m = msgSnap.val();
+        const d = document.createElement("div");
+        d.className = "msg user";
+        d.innerHTML =
+          `[${uid}] ${m.text}<div class="meta">${m.time}</div>`;
+        messages.appendChild(d);
+        messages.scrollTop = messages.scrollHeight;
+      }
+    );
+  });
+}
+
+/* ================= SEND MESSAGE ================= */
 function sendMsg() {
   const text = input.value.trim();
   if (!text) return;
 
+  /* ADMIN LOGIN */
   if (text === ADMIN_CODE) {
     isAdmin = true;
     adminBar.style.display = "block";
     title.innerText = "👑 Admin Panel";
+    messages.innerHTML = "";
+    input.value = "";
+    startAdminChat();
+    return;
+  }
+
+  /* ADMIN REPLY FORMAT: @user_xxxxx message */
+  if (isAdmin && text.startsWith("@")) {
+    const parts = text.split(" ");
+    const targetUser = parts[0].replace("@", "");
+    const msgText = parts.slice(1).join(" ");
+
+    push(ref(window.db, "supportChats/" + targetUser + "/messages"), {
+      sender: "admin",
+      text: msgText,
+      time: timeNow()
+    });
+
     input.value = "";
     return;
   }
 
-  push(chatRef, {
-    sender: isAdmin ? "admin" : "user",
+  /* USER MESSAGE */
+  push(ref(window.db, "supportChats/" + userId + "/messages"), {
+    sender: "user",
     text,
     time: timeNow()
   });
@@ -117,6 +161,10 @@ function sendMsg() {
   input.value = "";
 }
 
+/* START USER CHAT BY DEFAULT */
+startUserChat();
+
+/* EVENTS */
 sendBtn.onclick = sendMsg;
 input.addEventListener("keypress", e => e.key === "Enter" && sendMsg());
 </script>
