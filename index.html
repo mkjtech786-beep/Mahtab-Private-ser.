@@ -2,13 +2,13 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Telegram Chat V4 PRO (Admin Enabled)</title>
+<title>Telegram Chat V4 PRO</title>
 
-<!-- Firebase v10 Imports -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js"; 
-  import { getDatabase, ref, push, onChildAdded, get, update, set, onValue, off } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
+  // ✅ Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyAqfguS1ucAtklcl06eB1JIWQr46XMpe7g",
     authDomain: "safe-chat-c0b9c.firebaseapp.com",
@@ -44,15 +44,9 @@ body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:
 .input-box{display:flex;padding:10px;background:#161616;border-top:1px solid #2a2a2a}
 .input-box input{flex:1;padding:11px;border:none;border-radius:12px;background:#0f0f0f;color:#fff;outline:none}
 .input-box button{margin-left:8px;padding:11px 16px;border:none;border-radius:12px;background:#d4af37;color:#000;font-weight:bold;cursor:pointer}
-.user-list-item{padding:10px;margin-bottom:8px;background:#1f2a33;color:#fff;border-radius:8px;border:1px solid #2a2a2a;transition: background 0.2s;}
-.user-list-item:hover{background:#2a3b4c;}
-.list-btn{padding:4px 8px;border:none;border-radius:4px;margin-top:5px;font-weight:bold;cursor:pointer;}
-.ban-btn{ background:#ff4d4d; color:#000; }
-.unban-btn{ background:#4dff4d; color:#000; }
-.chat-btn{ background:#338aff; color:#fff; margin-left:5px; }
-.back-btn{background:#1a1a1a;color:#fff;padding:8px;border:none;border-radius:8px;width:100%;margin-bottom:10px;cursor:pointer;}
 </style>
 </head>
+
 <body>
 
 <div class="chat">
@@ -74,7 +68,9 @@ body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:
 </div>
 
 <script type="module">
-const messagesContainer = document.getElementById("messages");
+import { ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+
+const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 const adminBar = document.getElementById("adminBar");
@@ -85,160 +81,75 @@ const sendBtn = document.getElementById("sendBtn");
 const ADMIN_CODE = "mahtab666777";
 let isAdmin = false;
 let typingTimer;
+let userId = "user_" + Math.floor(Math.random() * 100000);
 
-let userId = localStorage.getItem('chatUserId');
-if (!userId) {
-    userId = "user_" + Math.floor(Math.random() * 100000);
-    localStorage.setItem('chatUserId', userId);
-}
-
-let currentChattingUserId = null; 
-
-const PUBLIC_MESSAGES_REF = ref(window.db, 'public_messages'); 
-const usersRef = ref(window.db, 'users'); 
-
+/* helpers */
 function timeNow() {
   const d = new Date();
-  return d.getHours().toString().padStart(2,"0") + ":" + d.getMinutes().toString().padStart(2,"0");
+  return d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
 }
 
-let messageListener = null; 
+/* Firebase ref */
+const messagesRef = ref(window.db, 'messages');
 
-function loadMessages(chatRef) {
-    if (messageListener) { messageListener(); messageListener = null; }
-    messagesContainer.innerHTML = ""; 
-    const messageCallback = (data) => {
-        const msg = data.val();
-        const div = document.createElement("div");
-        if (msg.sender === userId && !isAdmin) { div.className = "msg user"; }
-        else if (msg.sender === currentChattingUserId && isAdmin) { div.className = "msg user"; }
-        else if (msg.sender === 'admin' && isAdmin) { div.className = "msg admin"; }
-        else if (msg.sender === 'admin') { div.className = "msg support"; }
-        else { div.className = "msg user"; }
-        div.innerHTML = msg.text + `<div class="meta">${msg.time}</div>`;
-        messagesContainer.appendChild(div);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    };
-    onChildAdded(chatRef, messageCallback);
-    messageListener = () => off(chatRef,'child_added',messageCallback);
-}
+/* Load messages in real-time */
+onChildAdded(messagesRef, (data) => {
+  const msg = data.val();
+  const div = document.createElement("div");
+  div.className = msg.sender === userId ? "msg user" : (msg.sender === "admin" ? "msg admin" : "msg support");
+  div.innerHTML = msg.text + `<div class="meta">${msg.time}</div>`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+});
 
-async function checkBanStatus() {
-  const userSnapshot = await get(ref(window.db, `users/${userId}`));
-  const userData = userSnapshot.val();
-  if (userData && userData.isBanned) {
-    alert("❌ آپ کو اس چیٹ سے بین (Ban) کر دیا گیا ہے۔");
-    input.disabled = true;
-    sendBtn.disabled = true;
-    input.placeholder = "آپ بینڈ ہیں (You are banned).";
-    return true;
-  }
-  await set(ref(window.db, `users/${userId}`), { isBanned: userData?.isBanned||false, lastSeen: timeNow() });
-  return false;
-}
+/* fake online count */
+setInterval(() => {
+  status.innerText = `online • ${5 + Math.floor(Math.random() * 5)} users`;
+}, 4000);
 
-async function sendMsg() {
+/* typing indicator */
+input.addEventListener("input", () => {
+  typing.style.display = "block";
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => typing.style.display = "none", 700);
+});
+
+/* send message function */
+function sendMsg() {
   const text = input.value.trim();
   if (!text) return;
 
-  if (text === ADMIN_CODE && !isAdmin) {
+  /* admin login */
+  if (text === ADMIN_CODE) {
     isAdmin = true;
     adminBar.style.display = "block";
-    title.innerText = "👑 ایڈمن پینل";
+    title.innerText = "👑 Admin Panel";
     input.value = "";
-    loadAdminPanel(); 
     return;
   }
 
-  if (isAdmin && !currentChattingUserId) { alert("براہ کرم چیٹ شروع کرنے کے لیے یوزر لسٹ میں سے ایک یوزر کو منتخب کریں۔"); input.value=""; return; }
+  const msgObj = {
+    sender: isAdmin ? "admin" : userId,
+    text: text,
+    time: timeNow()
+  };
 
-  if (!isAdmin) { if (await checkBanStatus()) return; }
-
-  const msgObj = { sender: isAdmin?"admin":userId, text:text, time:timeNow() };
-  const chatRefPath = isAdmin && currentChattingUserId ? ref(window.db, `chats/${currentChattingUserId}`) : PUBLIC_MESSAGES_REF;
-  push(chatRefPath, msgObj)
-    .then(()=>{ if(!isAdmin) update(ref(window.db, `users/${userId}`),{ lastMsgTime: Date.now() }); })
-    .catch(e=>console.error("Firebase push error:",e));
+  push(messagesRef, msgObj)
+    .then(() => console.log("Message sent"))
+    .catch(e => console.error("Firebase push error:", e));
 
   input.value = "";
   typing.style.display = "none";
 }
 
-let usersListener = null;
-
-function renderUserList(users){
-    messagesContainer.innerHTML = `<h3 style="color:#d4af37; text-align:center;">👥 یوزر لسٹ</h3>`;
-    const publicChatBtn = document.createElement('button');
-    publicChatBtn.innerText = "تمام پبلک پیغامات دیکھیں";
-    publicChatBtn.className = 'back-btn';
-    publicChatBtn.onclick = () => { currentChattingUserId=null; title.innerText="Telegram Help (Public Chat)"; loadMessages(PUBLIC_MESSAGES_REF); };
-    messagesContainer.appendChild(publicChatBtn);
-
-    Object.keys(users).forEach(uid=>{
-        const user = users[uid];
-        const item = document.createElement('div');
-        const banStatus = user.isBanned?'❌ بینڈ':'✅ فعال';
-        const banBtnText = user.isBanned?'UNBAN کریں':'BAN کریں';
-        const banBtnClass = user.isBanned?'unban-btn':'ban-btn';
-
-        item.className='user-list-item';
-        item.innerHTML = `<strong>${uid}</strong> <span style="color:${user.isBanned?'#ff4d4d':'#4dff4d'}; font-size:12px;">(${banStatus})</span>
-        <div style="font-size:10px; opacity:0.7;">آخری بار: ${user.lastSeen||'N/A'}</div>
-        <button data-uid="${uid}" class="list-btn ${banBtnClass}">${banBtnText}</button>
-        <button data-uid="${uid}" class="list-btn chat-btn">CHAT کریں</button>`;
-        messagesContainer.appendChild(item);
-    });
-
-    messagesContainer.querySelectorAll('.list-btn').forEach(btn=>{
-        btn.onclick=async (e)=>{
-            const uid = e.target.getAttribute('data-uid');
-            if(e.target.innerText.includes('BAN')||e.target.innerText.includes('UNBAN')){
-                const isCurrentlyBanned = e.target.innerText==='BAN کریں';
-                await update(ref(window.db, `users/${uid}`), { isBanned:isCurrentlyBanned });
-            } else if(e.target.innerText.includes('CHAT')){
-                currentChattingUserId=uid;
-                title.innerText=`💬 چیٹ: ${uid}`;
-                loadUserChat(uid);
-            }
-        };
-    });
-}
-
-function loadAdminPanel(){
-    if(usersListener){ usersListener(); usersListener=null; }
-    const userCallback = snapshot => { renderUserList(snapshot.val()||{}); };
-    onValue(usersRef,userCallback);
-    usersListener = () => off(usersRef,'value',userCallback);
-}
-
-function loadUserChat(uid){
-    if(usersListener){ usersListener(); usersListener=null; }
-    messagesContainer.innerHTML="";
-    const backBtn = document.createElement('button');
-    backBtn.innerText="← یوزرز لسٹ پر واپس جائیں";
-    backBtn.className='back-btn';
-    backBtn.onclick = ()=>{ currentChattingUserId=null; loadAdminPanel(); };
-    messagesContainer.appendChild(backBtn);
-
-    const chatPath = ref(window.db, `chats/${uid}`);
-    loadMessages(chatPath); 
-}
-
-/* --- INIT --- */
-loadMessages(PUBLIC_MESSAGES_REF);
-
-setInterval(()=>{ status.innerText=`online • ${5+Math.floor(Math.random()*5)} users`; },4000);
-
-input.addEventListener("input",()=>{
-    typing.style.display="block";
-    clearTimeout(typingTimer);
-    typingTimer=setTimeout(()=>typing.style.display="none",700);
-});
-
-// Send Button & Enter key
+/* bind send button */
 sendBtn.addEventListener("click", sendMsg);
-input.addEventListener("keypress",(e)=>{ if(e.key==="Enter") sendMsg(); });
 
+/* bind Enter key */
+input.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendMsg();
+});
 </script>
+
 </body>
 </html>
