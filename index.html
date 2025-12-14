@@ -1,118 +1,79 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Telegram Chat V4 PRO Admin UI</title>
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, onValue, update, remove, set } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyAqfguS1ucAtklcl06eB1JIWQr46XMpe7g",
-  authDomain: "safe-chat-c0b9c.firebaseapp.com",
-  databaseURL: "https://safe-chat-c0b9c-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "safe-chat-c0b9c",
-  storageBucket: "safe-chat-c0b9c.firebasestorage.app",
-  messagingSenderId: "119640275300",
-  appId: "1:119640275300:web:20ae984f4af1ffe6a62271"
-};
-
-const app = initializeApp(firebaseConfig);
-window.db = getDatabase(app);
-</script>
-
-<style>
-*{box-sizing:border-box}
-body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh}
-.chat-container{display:flex;width:800px;height:700px;background:#121212;border-radius:18px;overflow:hidden;box-shadow:0 0 40px rgba(212,175,55,.3)}
-.users-panel{width:220px;background:#1a1a1a;padding:10px;overflow-y:auto}
-.users-panel h3{color:#d4af37;margin-top:0}
-.user-item{display:flex;justify-content:space-between;padding:6px;margin-bottom:4px;border-radius:6px;cursor:pointer;background:#222;color:#fff}
-.user-item:hover{background:#2a2a2a}
-.ban-btn{background:#d4af37;color:#000;padding:2px 6px;border:none;border-radius:6px;cursor:pointer;font-size:11px}
-.chat-panel{flex:1;display:flex;flex-direction:column}
-.header{padding:12px;background:#161616;color:#d4af37;font-weight:bold;border-bottom:1px solid #2a2a2a}
-.messages{flex:1;padding:12px;overflow-y:auto;background:#0f0f0f}
-.msg{max-width:78%;padding:10px 12px;margin-bottom:10px;border-radius:14px;font-size:14px;line-height:1.4;animation:fade .25s ease;position:relative}
-@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
-.user{background:#1f2a33;color:#fff;margin-left:auto}
-.admin{background:#d4af37;color:#000;margin-right:auto}
-.meta{font-size:10px;opacity:.6;margin-top:4px}
-.user .meta{text-align:right}
-.admin .meta{text-align:left}
-.delete-btn{position:absolute;top:2px;right:4px;font-size:10px;color:#f00;cursor:pointer}
-.input-box{display:flex;padding:10px;background:#161616;border-top:1px solid #2a2a2a}
-.input-box input{flex:1;padding:11px;border:none;border-radius:12px;background:#0f0f0f;color:#fff;outline:none}
-.input-box button{margin-left:8px;padding:11px 16px;border:none;border-radius:12px;background:#d4af37;color:#000;font-weight:bold;cursor:pointer}
-.typing{display:none;font-size:12px;color:#888;padding:4px 12px}
-</style>
-</head>
-
-<body>
-<div class="chat-container">
-  <div class="users-panel">
-    <h3>Users</h3>
-    <div id="usersList"></div>
-  </div>
-  <div class="chat-panel">
-    <div class="header">Admin Chat Panel</div>
-    <div class="messages" id="messages"></div>
-    <div class="typing" id="typing">typing…</div>
-    <div class="input-box">
-      <input id="input" placeholder="Type message">
-      <button id="sendBtn">➤</button>
-    </div>
-  </div>
-</div>
-
-<script type="module">
-import { ref, push, onChildAdded, onValue, update, remove, set } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import { ref, push, onChildAdded, onValue, set, update, remove, get } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 const typing = document.getElementById("typing");
+const adminBar = document.getElementById("adminBar");
+const title = document.getElementById("title");
+const status = document.getElementById("status");
 const sendBtn = document.getElementById("sendBtn");
 const usersList = document.getElementById("usersList");
 
 const ADMIN_CODE = "mahtab666777";
-let isAdmin=false;
+let isAdmin = false;
 let typingTimer;
-let userId="user_"+Math.floor(Math.random()*100000);
-let selectedUser=null;
+let userId = "user_" + Math.floor(Math.random()*100000);
+let selectedUser = null;
 
 /* helpers */
-function timeNow(){
-  const d=new Date();
-  return d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");
+function timeNow() {
+  const d = new Date();
+  return d.getHours().toString().padStart(2,"0") + ":" + d.getMinutes().toString().padStart(2,"0");
 }
 
 /* Firebase refs */
-const messagesRef = ref(window.db,'messages');
-const usersRef = ref(window.db,'users');
+const messagesRef = ref(window.db, 'messages');
+const usersRef = ref(window.db, 'users');
 
-/* Add self to users node */
-set(ref(window.db,'users/'+userId),{banned:false});
+/* Add user to users node */
+set(ref(window.db,'users/'+userId),{banned:false, muted:false, vip:false});
 
-/* Load users list dynamically */
+/* Load users list */
 function loadUsers(){
   usersList.innerHTML="";
-  onValue(usersRef,snapshot=>{
-    const data=snapshot.val();
+  onValue(usersRef, snapshot=>{
+    const data = snapshot.val() || {};
+    usersList.innerHTML = "";
     for(let uid in data){
-      const userDiv=document.createElement("div");
+      const userDiv = document.createElement("div");
       userDiv.className="user-item";
-      userDiv.innerHTML=uid + (data[uid].banned?" 🔒":"");
+      let statusTxt = data[uid].banned ? "🔒" : (data[uid].muted ? "🔇" : "");
+      if(data[uid].vip) statusTxt += " ⭐";
+      userDiv.innerHTML = uid + " " + statusTxt;
 
-      const banBtn=document.createElement("button");
+      // Ban/Unban button
+      const banBtn = document.createElement("span");
       banBtn.className="ban-btn";
-      banBtn.innerText=data[uid].banned?"Unban":"Ban";
-      banBtn.onclick=()=>{
-        update(ref(window.db,'users/'+uid),{banned:!data[uid].banned});
+      banBtn.innerText = data[uid].banned ? "Unban" : "Ban";
+      banBtn.onclick = ()=>{
+        update(ref(window.db,'users/'+uid), {banned: !data[uid].banned});
       };
-
       userDiv.appendChild(banBtn);
+
+      // Mute/Unmute button
+      const muteBtn = document.createElement("span");
+      muteBtn.className="ban-btn";
+      muteBtn.style.marginLeft="4px";
+      muteBtn.innerText = data[uid].muted ? "Unmute" : "Mute";
+      muteBtn.onclick = ()=>{
+        update(ref(window.db,'users/'+uid), {muted: !data[uid].muted});
+      };
+      userDiv.appendChild(muteBtn);
+
+      // VIP toggle
+      const vipBtn = document.createElement("span");
+      vipBtn.className="ban-btn";
+      vipBtn.style.marginLeft="4px";
+      vipBtn.innerText = data[uid].vip ? "Remove VIP" : "VIP";
+      vipBtn.onclick = ()=>{
+        update(ref(window.db,'users/'+uid), {vip: !data[uid].vip});
+      };
+      userDiv.appendChild(vipBtn);
+
+      // Select user to view messages
       userDiv.onclick=()=>{
-        selectedUser=uid;
+        selectedUser = uid;
         messages.innerHTML="";
       };
 
@@ -122,72 +83,85 @@ function loadUsers(){
 }
 
 /* Load messages */
-onChildAdded(messagesRef,data=>{
-  const msg=data.val();
-  if(isAdmin && selectedUser && msg.sender!==selectedUser && msg.sender!=="admin") return;
-  const div=document.createElement("div");
-  div.className=msg.sender===userId?"msg user":"msg admin";
-  div.innerHTML=msg.text + `<div class="meta">${msg.time}</div>`;
+onChildAdded(messagesRef, data=>{
+  const msg = data.val();
+
+  // filter messages: admin sees selected user only
+  if(isAdmin && selectedUser && msg.sender !== selectedUser && msg.sender !== "admin") return;
+
+  const div = document.createElement("div");
+  div.className = msg.sender === userId ? "msg user" : (msg.sender==="admin" ? "msg admin" : "msg support");
+  div.innerHTML = msg.text + `<div class="meta">${msg.time}</div>`;
 
   if(isAdmin){
-    const del=document.createElement("span");
+    const del = document.createElement("span");
     del.className="delete-btn";
     del.innerText="×";
-    del.onclick=()=>remove(ref(window.db,'messages/'+data.key));
+    del.onclick = ()=> remove(ref(window.db,'messages/'+data.key));
     div.appendChild(del);
   }
 
   messages.appendChild(div);
-  messages.scrollTop=messages.scrollHeight;
+  messages.scrollTop = messages.scrollHeight;
 });
 
+/* fake online count */
+setInterval(()=>{status.innerText = `online • ${5+Math.floor(Math.random()*5)} users`;},4000);
+
 /* typing indicator */
-input.addEventListener("input",()=>{
+input.addEventListener("input", ()=>{
   typing.style.display="block";
   clearTimeout(typingTimer);
   typingTimer=setTimeout(()=>typing.style.display="none",700);
 });
 
 /* send message */
-function sendMsg(){
+async function sendMsg(){
   const text=input.value.trim();
   if(!text) return;
 
+  /* admin login */
   if(text===ADMIN_CODE){
     isAdmin=true;
+    adminBar.style.display="block";
+    title.innerText="👑 Admin Panel";
     loadUsers();
     input.value="";
     return;
   }
 
+  // check banned or muted for normal users
   const userNode = ref(window.db,'users/'+userId);
+  const snap = await get(userNode);
   if(!isAdmin){
-    onValue(userNode,snap=>{
-      if(snap.val().banned){
-        alert("You are banned!");
-        input.value="";
-        return;
-      }
-    },{onlyOnce:true});
+    const userData = snap.val();
+    if(userData.banned){ alert("You are banned!"); input.value=""; return; }
+    if(userData.muted){ alert("You are muted!"); input.value=""; return; }
   }
 
-  const msgObj={
-    sender:isAdmin?(selectedUser?"admin":"admin"):userId,
-    text:text,
-    time:timeNow()
-  };
+  let msgObj;
+  if(isAdmin){
+    // Admin sending to selected user
+    if(selectedUser){
+      msgObj = { sender:"admin", text:text, user:selectedUser, time:timeNow() };
+    } else {
+      // broadcast to all
+      msgObj = { sender:"admin", text:text, user:"all", time:timeNow() };
+    }
+  } else {
+    msgObj = { sender:userId, text:text, time:timeNow() };
+  }
 
   push(messagesRef,msgObj).then(()=>console.log("Message sent"))
-  .catch(e=>console.error(e));
+  .catch(e=>console.error("Firebase push error:", e));
 
   input.value="";
   typing.style.display="none";
 }
 
 /* bind send button */
-sendBtn.addEventListener("click",sendMsg);
-input.addEventListener("keypress",e=>{if(e.key==="Enter")sendMsg();});
+sendBtn.addEventListener("click", sendMsg);
 
+/* bind Enter key */
+input.addEventListener("keypress",(e)=>{if(e.key==="Enter") sendMsg();});
 </script>
-</body>
-</html>
