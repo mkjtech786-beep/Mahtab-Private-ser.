@@ -3,14 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Support Chat VIP</title>
+<title>Support Chat Pro</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import {
-  getDatabase, ref, push, onChildAdded, onValue,
-  set, update, remove, onDisconnect
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, onValue, set, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 /* ---------------- FIREBASE ---------------- */
 const firebaseConfig = {
@@ -43,7 +42,6 @@ const title = document.getElementById("title");
 const usersDiv = document.getElementById("users");
 const adminTools = document.getElementById("adminTools");
 const notice = document.getElementById("notice");
-const typingIndicator = document.getElementById("typingIndicator");
 
 /* ---------------- SOUND ---------------- */
 const sendSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3");
@@ -58,26 +56,13 @@ if (!name) {
 
 /* ---------------- USER INFO ---------------- */
 const infoRef = ref(db, `chats/${uid}/info`);
-set(infoRef, {
-  name,
-  online: true,
-  lastSeen: Date.now(),
-  blocked: false,
-  locked: false,
-  unread: 0
-});
-
-onDisconnect(infoRef).update({
-  online: false,
-  lastSeen: Date.now()
-});
+set(infoRef, { name, online: true, lastSeen: Date.now(), blocked: false, locked: false, unread: 0 });
+onDisconnect(infoRef).update({ online: false, lastSeen: Date.now() });
 
 /* ---------------- USER MODE ---------------- */
 function startUser() {
   onChildAdded(ref(db, `chats/${uid}/messages`), snap => {
-    showTyping(true);
-    setTimeout(() => showTyping(false), 500);
-    render(snap.key, snap.val(), false, true);
+    render(snap.key, snap.val());
     receiveSound.play();
   });
 
@@ -94,7 +79,7 @@ function startUser() {
 
 /* ---------------- ADMIN DASHBOARD ---------------- */
 function startAdmin() {
-  title.innerText = "👑 Admin Dashboard";
+  title.innerHTML = "<span class='glow-title'>👑 Admin Dashboard</span>";
   usersDiv.style.display = "block";
   adminTools.style.display = "flex";
 
@@ -103,11 +88,9 @@ function startAdmin() {
     const info = snap.val().info || {};
     const div = document.createElement("div");
     div.className = "user";
-    div.innerHTML = `
-      <b>${info.name || u}</b>
-      <small>Unread: ${info.unread || 0}</small>
-      <small>${info.online ? "🟢 Online" : "Last seen: " + new Date(info.lastSeen).toLocaleTimeString()}</small>
-    `;
+    div.innerHTML = `<b>${info.name || u}</b>
+                     <small>Unread: ${info.unread || 0}</small>
+                     <small>${info.online ? "🟢 Online" : "Last seen: " + new Date(info.lastSeen).toLocaleTimeString()}</small>`;
     div.onclick = () => loadUser(u);
     usersDiv.appendChild(div);
   });
@@ -119,16 +102,9 @@ function loadUser(u) {
   update(ref(db, `chats/${u}/info`), { unread: 0 });
 
   onChildAdded(ref(db, `chats/${u}/messages`), snap => {
-    showTyping(true);
-    setTimeout(() => showTyping(false), 500);
-    render(snap.key, snap.val(), true, true);
+    render(snap.key, snap.val(), true);
     receiveSound.play();
   });
-}
-
-/* ---------------- TYPING INDICATOR ---------------- */
-function showTyping(show=true) {
-  typingIndicator.style.display = show ? "flex" : "none";
 }
 
 /* ---------------- SEND ---------------- */
@@ -152,9 +128,7 @@ sendBtn.onclick = () => {
     time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
   });
 
-  if (!isAdmin) {
-    update(ref(db, `chats/${uid}/info`), { unread: (Math.random()*1000)|0 });
-  }
+  if (!isAdmin) update(ref(db, `chats/${uid}/info`), { unread: (Math.random()*1000)|0 });
 
   sendSound.play();
   input.value = "";
@@ -172,94 +146,70 @@ document.getElementById("unlockBtn").onclick = () => {
 };
 
 /* ---------------- RENDER ---------------- */
-function render(id, m, adminView=false, isNew=false) {
+function render(id, m, adminView=false) {
   const d = document.createElement("div");
   d.className = "msg " + m.sender;
-  if (isNew) d.classList.add("pop");
-  d.innerHTML = `
-    <div class="bubble">
-      ${m.text}
-      <span>${m.time}</span>
-      ${adminView && m.sender==="admin" ? `
-        <button onclick="editMsg('${id}')">✏️</button>
-        <button onclick="delMsg('${id}')">🗑️</button>
-      ` : ""}
-    </div>
-  `;
+  d.innerHTML = `<div class="bubble">
+                   ${m.text}
+                   <span>${m.time}</span>
+                   ${adminView && m.sender==="admin" ? `
+                     <button onclick="editMsg('${id}')">✏️</button>
+                     <button onclick="delMsg('${id}')">🗑️</button>` : ""}
+                 </div>`;
   messages.appendChild(d);
   messages.scrollTop = messages.scrollHeight;
 }
 
-window.delMsg = (id) => {
-  if (!activeUser) return;
-  if (!confirm("Delete message?")) return;
-  remove(ref(db, `chats/${activeUser}/messages/${id}`));
-};
-
-window.editMsg = (id) => {
-  const newText = prompt("Edit message");
-  if (!newText) return;
-  update(ref(db, `chats/${activeUser}/messages/${id}`), { text: newText });
-};
+window.delMsg = (id) => { if (!activeUser) return; if (!confirm("Delete message?")) return; remove(ref(db, `chats/${activeUser}/messages/${id}`)); };
+window.editMsg = (id) => { const newText = prompt("Edit message"); if (!newText) return; update(ref(db, `chats/${activeUser}/messages/${id}`), { text: newText }); };
 
 /* ---------------- INIT ---------------- */
 startUser();
 </script>
 
 <style>
-body { margin:0; font-family:'Poppins',sans-serif; background:#0b0b0f; color:#fff; }
-.chat { display:flex; height:100vh; }
-#users { width:240px; background:#111; display:none; overflow-y:auto; border-right:2px solid #FFD700; }
-.user { padding:12px 10px; border-bottom:1px solid #222; cursor:pointer; border-radius:10px; transition:0.2s; }
-.user:hover { background:#222; transform:scale(1.03); box-shadow:0 0 8px #FFD70033; }
-.user small { display:block; color:#ccc; font-size:11px; }
-.main { flex:1; display:flex; flex-direction:column; background:#0b0b0f; }
-.header { padding:16px; font-weight:600; font-size:18px; color:#FFD700; background:linear-gradient(90deg,#1a1a1a,#111); border-bottom:1px solid #333; }
-.admin-tools { display:none; gap:8px; padding:10px; background:#111; border-bottom:1px solid #222; }
-.admin-tools button { background:linear-gradient(90deg,#FFD700,#F0C420); color:#111; padding:10px 16px; font-weight:600; cursor:pointer; border-radius:12px; transition:0.3s; box-shadow:0 0 12px #FFD70066; }
-.admin-tools button:hover { transform:scale(1.05); box-shadow:0 0 18px #FFD700AA; }
-.messages { flex:1; padding:16px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; scroll-behavior:smooth; }
-#typingIndicator { display:flex; gap:4px; padding-left:10px; margin-bottom:6px; }
-.typing-dot { width:10px; height:10px; background:#FFD700; border-radius:50%; animation:bounce 1s infinite; }
-.typing-dot:nth-child(2){animation-delay:0.2s;} .typing-dot:nth-child(3){animation-delay:0.4s;}
-@keyframes bounce {0%,80%,100%{transform:scale(0);}40%{transform:scale(1);}}
-.msg { display:flex; margin-bottom:6px; opacity:0; transform:translateY(20px); animation:slideIn 0.4s forwards; }
-@keyframes slideIn { to { opacity:1; transform:translateY(0); } }
-.msg.pop { animation: pop 0.35s ease forwards, glow 1.5s infinite alternate; }
-@keyframes pop {0%{transform:scale(0.8);opacity:0;}60%{transform:scale(1.05);opacity:1;}100%{transform:scale(1);opacity:1;}}
-.user.msg { justify-content:flex-end; }
-.admin.msg { justify-content:flex-start; }
-.bubble { max-width:70%; padding:14px 18px; border-radius:20px; box-shadow:0 2px 8px rgba(0,0,0,0.5); position:relative; transition:0.3s; font-size:14px; }
-.user .bubble { background:#222; color:#fff; border-bottom-right-radius:4px; box-shadow:0 0 10px #FFD70033; }
-.admin .bubble { background:linear-gradient(135deg,#FFD700,#F0C420); color:#111; border-bottom-left-radius:4px; box-shadow:0 0 12px #FFD700AA,0 0 20px #FFD70055; animation:glow 1.5s infinite alternate; }
-@keyframes glow { 0%{box-shadow:0 0 6px #FFD700AA,0 0 12px #FFD70033;}50%{box-shadow:0 0 18px #FFD700FF,0 0 28px #FFD70066;}100%{box-shadow:0 0 6px #FFD700AA,0 0 12px #FFD70033;} }
-.bubble span { display:block; font-size:10px; opacity:0.7; margin-top:4px; text-align:right; }
-.bubble button { background:transparent; border:none; font-size:12px; cursor:pointer; margin-left:6px; }
-.input { display:flex; padding:12px; border-top:1px solid #222; background:#111; }
-input { flex:1; padding:12px 14px; border-radius:14px; border:none; font-size:14px; outline:none; background:#222; color:#fff; }
-input::placeholder { color:#ccc; }
-button#send { margin-left:8px; padding:12px 18px; border-radius:14px; background:linear-gradient(90deg,#FFD700,#F0C420); color:#111; font-weight:600; cursor:pointer; border:none; transition:0.3s; box-shadow:0 0 12px #FFD70066; }
-button#send:hover { transform:scale(1.05); box-shadow:0 0 18px #FFD700AA; }
-button#send:active { transform:scale(0.95); }
-#notice { font-size:12px; color:#f87171; padding-left:12px; margin-bottom:4px; }
+body{margin:0;font-family:Poppins;background:#0f172a;color:#fff}
+.chat{display:flex;height:100vh}
+#users{width:240px;background:#020617;display:none;overflow:auto}
+.user{padding:10px;border-bottom:1px solid #1e293b;cursor:pointer}
+.user small{display:block;color:#94a3b8;font-size:11px}
+.main{flex:1;display:flex;flex-direction:column}
+.header{padding:14px;background:#111;font-weight:600;display:flex;justify-content:center;align-items:center;position:relative}
+.glow-title{color:#0ff;font-size:20px;text-shadow:0 0 5px #0ff,0 0 10px #0ff,0 0 20px #0ff,0 0 40px #0ff;animation:glow 1.5s ease-in-out infinite alternate}
+@keyframes glow{from{text-shadow:0 0 5px #0ff,0 0 10px #0ff,0 0 20px #0ff,0 0 40px #0ff;}to{text-shadow:0 0 10px #0ff,0 0 20px #0ff,0 0 30px #0ff,0 0 60px #0ff;}}
+.admin-tools{display:none;gap:6px;padding:8px;background:#020617}
+.messages{flex:1;padding:12px;overflow:auto}
+.msg{margin-bottom:8px;display:flex}
+.user.msg{justify-content:flex-end}
+.admin.msg{justify-content:flex-start}
+.bubble{max-width:70%;padding:12px 16px;border-radius:20px;position:relative;box-shadow:0 0 10px rgba(0,255,255,0.3);animation:bubbleGlow 2s infinite alternate;}
+.user .bubble{background:#0ff;color:#000;box-shadow:0 0 10px #0ff99;}
+.admin .bubble{background:#111;color:#0ff;box-shadow:0 0 10px #0ff;}
+.bubble span{display:block;font-size:10px;opacity:.6;margin-top:4px;}
+@keyframes bubbleGlow{from{box-shadow:0 0 10px rgba(0,255,255,0.3);}to{box-shadow:0 0 20px rgba(0,255,255,0.6);}}
+.input{display:flex;padding:10px;border-top:1px solid #1e293b}
+input{flex:1;padding:10px;border-radius:25px;border:none;background:#222;color:#fff;outline:none}
+button{padding:8px 14px;border:none;border-radius:50%;background:#0ff;color:#111;font-weight:600;cursor:pointer;box-shadow:0 0 10px #0ff,0 0 20px #0ff;transition:transform 0.2s;animation:buttonGlow 1.5s infinite alternate}
+button:hover{transform:scale(1.1);}
+@keyframes buttonGlow{from{box-shadow:0 0 10px #0ff,0 0 20px #0ff;}to{box-shadow:0 0 20px #0ff,0 0 40px #0ff;}}
+#notice{font-size:12px;color:#f87171;padding-left:10px}
 </style>
 </head>
+
 <body>
 <div class="chat">
   <div id="users"></div>
   <div class="main">
-    <div class="header" id="title">Support Chat VIP</div>
+    <div class="header" id="title">Support Chat</div>
+
     <div class="admin-tools" id="adminTools">
       <button id="lockBtn">🔒 Lock</button>
       <button id="unlockBtn">🔓 Unlock</button>
     </div>
+
     <div class="messages" id="messages"></div>
-    <div id="typingIndicator" style="display:none;">
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
-    </div>
     <div id="notice"></div>
+
     <div class="input">
       <input id="input" placeholder="Type message">
       <button id="send">Send</button>
