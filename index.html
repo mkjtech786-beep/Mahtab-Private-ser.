@@ -2,12 +2,13 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>WhatsApp Help Chat</title>
+<title>Telegram Chat V2 PRO</title>
 
 <style>
+*{box-sizing:border-box}
 body{
   margin:0;
-  background:#0b141a;
+  background:#0b0b0f;
   font-family:Arial, sans-serif;
   display:flex;
   justify-content:center;
@@ -15,104 +16,130 @@ body{
   height:100vh;
 }
 
+/* CHAT WRAPPER */
 .chat{
-  width:360px;
-  height:600px;
-  background:#efeae2;
+  width:370px;
+  height:640px;
+  background:#121212;
+  border-radius:16px;
   display:flex;
   flex-direction:column;
-  border-radius:12px;
   overflow:hidden;
+  box-shadow:0 0 35px rgba(212,175,55,.25);
 }
 
 /* HEADER */
 .header{
-  background:#075e54;
-  color:#fff;
-  padding:10px;
+  padding:14px;
+  background:#161616;
+  border-bottom:1px solid #2a2a2a;
 }
 .header-title{
+  color:#d4af37;
   font-weight:bold;
+  font-size:17px;
 }
 .header-status{
   font-size:12px;
-  color:#d4f8e8;
-}
-
-/* MESSAGES */
-.messages{
-  flex:1;
-  padding:10px;
-  overflow-y:auto;
-  background:url("https://i.imgur.com/8bQpE6P.png");
-}
-
-.msg{
-  max-width:75%;
-  padding:8px 10px;
-  margin-bottom:8px;
-  border-radius:8px;
-  font-size:14px;
-  line-height:1.4;
-}
-
-.user{
-  background:#dcf8c6;
-  margin-left:auto;
-  border-bottom-right-radius:0;
-}
-
-.support{
-  background:#fff;
-  margin-right:auto;
-  border-bottom-left-radius:0;
-}
-
-.admin{
-  background:#f44336;
-  color:#fff;
-  margin-right:auto;
-}
-
-.typing{
-  font-size:12px;
-  color:#555;
-  margin-left:10px;
-  margin-bottom:5px;
-}
-
-/* INPUT */
-.input-box{
-  display:flex;
-  padding:8px;
-  background:#f0f0f0;
-}
-.input-box input{
-  flex:1;
-  padding:10px;
-  border:none;
-  border-radius:20px;
-  outline:none;
-}
-.input-box button{
-  margin-left:6px;
-  background:#25d366;
-  border:none;
-  color:#fff;
-  padding:10px 14px;
-  border-radius:50%;
-  font-size:16px;
-  cursor:pointer;
+  color:#8f8f8f;
 }
 
 /* ADMIN BAR */
 .admin-bar{
   display:none;
-  background:#b71c1c;
-  color:#fff;
+  background:linear-gradient(90deg,#3a2a00,#d4af37);
+  color:#000;
   text-align:center;
   font-size:12px;
-  padding:4px;
+  padding:6px;
+  font-weight:bold;
+}
+
+/* MESSAGES */
+.messages{
+  flex:1;
+  padding:12px;
+  overflow-y:auto;
+  background:#0f0f0f;
+}
+
+/* MESSAGE BUBBLE */
+.msg{
+  max-width:75%;
+  padding:10px 12px;
+  margin-bottom:10px;
+  border-radius:14px;
+  font-size:14px;
+  line-height:1.4;
+  animation:fadeIn .25s ease;
+}
+@keyframes fadeIn{
+  from{opacity:0; transform:translateY(4px)}
+  to{opacity:1; transform:none}
+}
+
+.user{
+  background:#1f2a33;
+  color:#fff;
+  margin-left:auto;
+  border-bottom-right-radius:4px;
+}
+
+.support{
+  background:#1a1a1a;
+  color:#d4af37;
+  margin-right:auto;
+  border-bottom-left-radius:4px;
+}
+
+.admin{
+  background:#d4af37;
+  color:#000;
+  margin-right:auto;
+}
+
+/* META (time + ticks) */
+.meta{
+  font-size:10px;
+  opacity:.7;
+  margin-top:4px;
+  text-align:right;
+}
+.support .meta,.admin .meta{ text-align:left }
+
+/* TYPING */
+.typing{
+  display:none;
+  font-size:12px;
+  color:#888;
+  padding:4px 12px;
+}
+
+/* INPUT */
+.input-box{
+  display:flex;
+  padding:10px;
+  background:#161616;
+  border-top:1px solid #2a2a2a;
+}
+.input-box input{
+  flex:1;
+  padding:11px;
+  border:none;
+  border-radius:12px;
+  background:#0f0f0f;
+  color:#fff;
+  outline:none;
+}
+.input-box button{
+  margin-left:8px;
+  padding:11px 16px;
+  border:none;
+  border-radius:12px;
+  background:#d4af37;
+  color:#000;
+  font-weight:bold;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -122,20 +149,23 @@ body{
 <div class="chat">
 
   <div class="header" id="header">
-    <div class="header-title">Help Support</div>
+    <div class="header-title">Telegram Help</div>
     <div class="header-status" id="status">online</div>
   </div>
 
-  <div class="admin-bar" id="adminBar">ADMIN MODE</div>
+  <div class="admin-bar" id="adminBar">👑 ADMIN MODE ENABLED</div>
 
   <div class="messages" id="messages">
-    <div class="msg support">Hello 👋 How can we help you?</div>
+    <div class="msg support">
+      Welcome 👋 How can we help you?
+      <div class="meta">00:00</div>
+    </div>
   </div>
 
-  <div class="typing" id="typing" style="display:none;">typing…</div>
+  <div class="typing" id="typing">typing…</div>
 
   <div class="input-box">
-    <input type="text" id="input" placeholder="Type a message">
+    <input id="input" placeholder="Message">
     <button onclick="sendMsg()">➤</button>
   </div>
 
@@ -148,9 +178,16 @@ const typing = document.getElementById("typing");
 const adminBar = document.getElementById("adminBar");
 const header = document.getElementById("header");
 
-let isAdmin = false;
-const ADMIN_CODE = "mahtab666777";
+const ADMIN_CODE="mahtab666777";
+let isAdmin=false;
 let typingTimer;
+
+/* time helper */
+function timeNow(){
+  const d=new Date();
+  return d.getHours().toString().padStart(2,"0")+":"+
+         d.getMinutes().toString().padStart(2,"0");
+}
 
 /* typing indicator */
 input.addEventListener("input",()=>{
@@ -159,11 +196,12 @@ input.addEventListener("input",()=>{
   typingTimer=setTimeout(()=>typing.style.display="none",700);
 });
 
+/* send message */
 function sendMsg(){
   const text=input.value.trim();
   if(!text) return;
 
-  /* secret admin login */
+  /* ADMIN LOGIN */
   if(text===ADMIN_CODE){
     isAdmin=true;
     adminBar.style.display="block";
@@ -172,10 +210,11 @@ function sendMsg(){
     return;
   }
 
-  const userMsg=document.createElement("div");
-  userMsg.className="msg user";
-  userMsg.innerText=text;
-  messages.appendChild(userMsg);
+  const u=document.createElement("div");
+  u.className="msg user";
+  u.innerHTML=`${text}
+    <div class="meta">${timeNow()} ✔✔</div>`;
+  messages.appendChild(u);
   input.value="";
   messages.scrollTop=messages.scrollHeight;
 
@@ -183,14 +222,15 @@ function sendMsg(){
 
   setTimeout(()=>{
     typing.style.display="none";
-    const reply=document.createElement("div");
-    reply.className="msg "+(isAdmin?"admin":"support");
-    reply.innerText=isAdmin
-      ?"Admin received message."
-      :"Thanks for contacting support.";
-    messages.appendChild(reply);
+    const r=document.createElement("div");
+    r.className="msg "+(isAdmin?"admin":"support");
+    r.innerHTML=(isAdmin
+      ?"Admin received your message."
+      :"Support will reply shortly.")+
+      `<div class="meta">${timeNow()}</div>`;
+    messages.appendChild(r);
     messages.scrollTop=messages.scrollHeight;
-  },1000);
+  },1200);
 }
 </script>
 
