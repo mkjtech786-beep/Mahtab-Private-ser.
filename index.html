@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Support Chat Pro</title>
+<title>Support Chat Pro Premium</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 
@@ -11,7 +11,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, onValue, set, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
-/* ---------------- FIREBASE ---------------- */
+/* ---------------- FIREBASE CONFIG ---------------- */
 const firebaseConfig = {
   apiKey: "AIzaSyAqfguS1ucAtklcl06eB1JIWQr46XMpe7g",
   authDomain: "safe-chat-c0b9c.firebaseapp.com",
@@ -31,7 +31,6 @@ let uid = localStorage.getItem("uid") || "user_" + Math.random().toString(36).sl
 let name = localStorage.getItem("name");
 let isAdmin = false;
 let activeUser = null;
-
 localStorage.setItem("uid", uid);
 
 /* ---------------- DOM ---------------- */
@@ -49,8 +48,7 @@ const receiveSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2354
 
 /* ---------------- USER NAME ---------------- */
 if (!name) {
-  name = prompt("Enter your name");
-  if (!name) name = "Guest";
+  name = prompt("Enter your name") || "Guest";
   localStorage.setItem("name", name);
 }
 
@@ -62,24 +60,20 @@ onDisconnect(infoRef).update({ online: false, lastSeen: Date.now() });
 /* ---------------- USER MODE ---------------- */
 function startUser() {
   onChildAdded(ref(db, `chats/${uid}/messages`), snap => {
-    render(snap.key, snap.val());
-    receiveSound.play();
+    const m = snap.val();
+    render(snap.key, m);
+    if(m.sender !== "user") receiveSound.play();
   });
 
   onValue(ref(db, `chats/${uid}/info/locked`), s => {
-    if (s.val()) {
-      input.disabled = true;
-      notice.innerText = "🔒 Chat is locked by admin";
-    } else {
-      input.disabled = false;
-      notice.innerText = "";
-    }
+    input.disabled = s.val();
+    notice.innerText = s.val() ? "🔒 Chat is locked by admin" : "";
   });
 }
 
 /* ---------------- ADMIN DASHBOARD ---------------- */
 function startAdmin() {
-  title.innerHTML = "<span class='glow-title'>👑 Admin Dashboard</span>";
+  title.innerHTML = "<span class='premium-title'>👑 Admin Dashboard</span>";
   usersDiv.style.display = "block";
   adminTools.style.display = "flex";
 
@@ -88,9 +82,11 @@ function startAdmin() {
     const info = snap.val().info || {};
     const div = document.createElement("div");
     div.className = "user";
-    div.innerHTML = `<b>${info.name || u}</b>
-                     <small>Unread: ${info.unread || 0}</small>
-                     <small>${info.online ? "🟢 Online" : "Last seen: " + new Date(info.lastSeen).toLocaleTimeString()}</small>`;
+    div.innerHTML = `
+      <b>${info.name || u}</b>
+      <small>Unread: ${info.unread || 0}</small>
+      <small>${info.online ? "🟢 Online" : "Last seen: " + new Date(info.lastSeen).toLocaleTimeString()}</small>
+    `;
     div.onclick = () => loadUser(u);
     usersDiv.appendChild(div);
   });
@@ -128,8 +124,7 @@ sendBtn.onclick = () => {
     time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
   });
 
-  if (!isAdmin) update(ref(db, `chats/${uid}/info`), { unread: (Math.random()*1000)|0 });
-
+  if (isAdmin && activeUser) update(ref(db, `chats/${activeUser}/info`), { unread: (Math.random()*1000)|0 });
   sendSound.play();
   input.value = "";
 };
@@ -139,7 +134,6 @@ document.getElementById("lockBtn").onclick = () => {
   if (!activeUser) return alert("Select user");
   update(ref(db, `chats/${activeUser}/info`), { locked: true });
 };
-
 document.getElementById("unlockBtn").onclick = () => {
   if (!activeUser) return alert("Select user");
   update(ref(db, `chats/${activeUser}/info`), { locked: false });
@@ -168,31 +162,47 @@ startUser();
 </script>
 
 <style>
-body{margin:0;font-family:Poppins;background:#0f172a;color:#fff}
-.chat{display:flex;height:100vh}
-#users{width:240px;background:#020617;display:none;overflow:auto}
-.user{padding:10px;border-bottom:1px solid #1e293b;cursor:pointer}
-.user small{display:block;color:#94a3b8;font-size:11px}
-.main{flex:1;display:flex;flex-direction:column}
-.header{padding:14px;background:#111;font-weight:600;display:flex;justify-content:center;align-items:center;position:relative}
-.glow-title{color:#0ff;font-size:20px;text-shadow:0 0 5px #0ff,0 0 10px #0ff,0 0 20px #0ff,0 0 40px #0ff;animation:glow 1.5s ease-in-out infinite alternate}
-@keyframes glow{from{text-shadow:0 0 5px #0ff,0 0 10px #0ff,0 0 20px #0ff,0 0 40px #0ff;}to{text-shadow:0 0 10px #0ff,0 0 20px #0ff,0 0 30px #0ff,0 0 60px #0ff;}}
-.admin-tools{display:none;gap:6px;padding:8px;background:#020617}
-.messages{flex:1;padding:12px;overflow:auto}
-.msg{margin-bottom:8px;display:flex}
-.user.msg{justify-content:flex-end}
-.admin.msg{justify-content:flex-start}
-.bubble{max-width:70%;padding:12px 16px;border-radius:20px;position:relative;box-shadow:0 0 10px rgba(0,255,255,0.3);animation:bubbleGlow 2s infinite alternate;}
-.user .bubble{background:#0ff;color:#000;box-shadow:0 0 10px #0ff99;}
-.admin .bubble{background:#111;color:#0ff;box-shadow:0 0 10px #0ff;}
-.bubble span{display:block;font-size:10px;opacity:.6;margin-top:4px;}
-@keyframes bubbleGlow{from{box-shadow:0 0 10px rgba(0,255,255,0.3);}to{box-shadow:0 0 20px rgba(0,255,255,0.6);}}
-.input{display:flex;padding:10px;border-top:1px solid #1e293b}
-input{flex:1;padding:10px;border-radius:25px;border:none;background:#222;color:#fff;outline:none}
-button{padding:8px 14px;border:none;border-radius:50%;background:#0ff;color:#111;font-weight:600;cursor:pointer;box-shadow:0 0 10px #0ff,0 0 20px #0ff;transition:transform 0.2s;animation:buttonGlow 1.5s infinite alternate}
-button:hover{transform:scale(1.1);}
-@keyframes buttonGlow{from{box-shadow:0 0 10px #0ff,0 0 20px #0ff;}to{box-shadow:0 0 20px #0ff,0 0 40px #0ff;}}
-#notice{font-size:12px;color:#f87171;padding-left:10px}
+/* ---------------- GENERAL ---------------- */
+body { margin:0; font-family: Poppins, sans-serif; background:#1a1a2e; color:#fff; }
+.chat { display:flex; height:100vh; }
+#users { width:250px; background:#1b1b38; display:none; overflow:auto; border-right:1px solid #333; }
+.user { padding:12px; border-bottom:1px solid #2a2a4d; cursor:pointer; transition:0.3s; }
+.user:hover { background:#2c2c55; }
+.user small { display:block; color:#aaa; font-size:12px; }
+.main { flex:1; display:flex; flex-direction:column; }
+.header { padding:16px; background:#14142b; font-weight:600; display:flex; justify-content:center; align-items:center; position:relative; box-shadow:0 2px 8px rgba(0,0,0,0.5);}
+.premium-title { color:#fbb034; font-size:20px; text-shadow: 0 0 10px #fbb034, 0 0 20px #ffdd7e; }
+
+/* ---------------- ADMIN TOOLS ---------------- */
+.admin-tools { display:none; gap:8px; padding:10px; background:#1b1b38; }
+.admin-tools button { flex:1; padding:8px 12px; border:none; border-radius:8px; background:#fbb034; color:#14142b; font-weight:600; cursor:pointer; transition:0.3s; box-shadow:0 2px 10px rgba(251,176,52,0.5);}
+.admin-tools button:hover { transform:scale(1.05); box-shadow:0 4px 20px rgba(251,176,52,0.7); }
+
+/* ---------------- MESSAGES ---------------- */
+.messages { flex:1; padding:16px; overflow:auto; }
+.msg { margin-bottom:10px; display:flex; }
+.user.msg { justify-content:flex-end; }
+.admin.msg { justify-content:flex-start; }
+.bubble { max-width:70%; padding:14px 18px; border-radius:18px; position:relative; box-shadow:0 4px 15px rgba(0,0,0,0.5); transition:0.3s; }
+.user .bubble { background:#fbb034; color:#14142b; }
+.admin .bubble { background:#14142b; color:#fbb034; border:1px solid #fbb034; }
+.bubble span { display:block; font-size:11px; opacity:0.6; margin-top:4px; }
+.bubble button { margin-left:5px; background:#fff; color:#14142b; border:none; padding:2px 5px; border-radius:5px; cursor:pointer; font-size:10px; }
+.bubble button:hover { opacity:0.8; }
+
+/* ---------------- INPUT ---------------- */
+.input { display:flex; padding:12px; border-top:1px solid #333; }
+input { flex:1; padding:12px 16px; border-radius:25px; border:none; background:#2c2c55; color:#fff; outline:none; font-size:14px; }
+button#send { padding:10px 18px; margin-left:10px; border:none; border-radius:25px; background:#fbb034; color:#14142b; font-weight:600; cursor:pointer; transition:0.3s; }
+button#send:hover { transform:scale(1.05); }
+
+/* ---------------- NOTICE ---------------- */
+#notice { font-size:12px; color:#ff6b6b; padding-left:12px; margin-top:4px; }
+
+/* ---------------- SCROLLBAR ---------------- */
+.messages::-webkit-scrollbar, #users::-webkit-scrollbar { width:8px; }
+.messages::-webkit-scrollbar-thumb, #users::-webkit-scrollbar-thumb { background:#fbb034; border-radius:4px; }
+.messages::-webkit-scrollbar-track, #users::-webkit-scrollbar-track { background:#1b1b38; }
 </style>
 </head>
 
@@ -200,7 +210,7 @@ button:hover{transform:scale(1.1);}
 <div class="chat">
   <div id="users"></div>
   <div class="main">
-    <div class="header" id="title">Support Chat</div>
+    <div class="header" id="title">Support Chat Pro</div>
 
     <div class="admin-tools" id="adminTools">
       <button id="lockBtn">🔒 Lock</button>
@@ -211,7 +221,7 @@ button:hover{transform:scale(1.1);}
     <div id="notice"></div>
 
     <div class="input">
-      <input id="input" placeholder="Type message">
+      <input id="input" placeholder="Type your message...">
       <button id="send">Send</button>
     </div>
   </div>
