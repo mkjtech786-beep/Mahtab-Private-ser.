@@ -6,7 +6,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-  import { getDatabase, ref, push, onChildAdded, remove } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+  import { getDatabase, ref, push, onChildAdded, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
   // ✅ Firebase config
   const firebaseConfig = {
@@ -26,14 +26,15 @@
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh}
-.chat{width:420px;height:720px;background:#121212;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 40px rgba(212,175,55,.3)}
-.header{padding:14px;background:#161616;border-bottom:1px solid #2a2a2a}
-.header-title{color:#d4af37;font-weight:bold;display:flex;justify-content:space-between;align-items:center}
+.chat{width:480px;height:750px;background:#121212;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 40px rgba(212,175,55,.3)}
+.header{padding:14px;background:#161616;border-bottom:1px solid #2a2a2a;display:flex;justify-content:space-between;align-items:center}
+.header-title{color:#d4af37;font-weight:bold}
 .header-status{font-size:12px;color:#8f8f8f}
 .admin-bar{display:none;background:#d4af37;color:#000;text-align:center;font-size:12px;padding:6px;font-weight:bold}
-.users-list{background:#1a1a1a;color:#fff;padding:8px;overflow-y:auto;height:80px}
-.user-item{padding:6px;cursor:pointer;border-bottom:1px solid #2a2a2a}
+.users-list{background:#1a1a1a;color:#fff;padding:8px;overflow-y:auto;height:100px}
+.user-item{padding:6px;cursor:pointer;border-bottom:1px solid #2a2a2a;display:flex;justify-content:space-between;align-items:center}
 .user-item:hover{background:#2a2a2a}
+.ban-btn{font-size:11px;color:#f00;cursor:pointer;margin-left:6px}
 .messages{flex:1;padding:12px;overflow-y:auto;background:#0f0f0f}
 .msg{max-width:78%;padding:10px 12px;margin-bottom:10px;border-radius:14px;font-size:14px;line-height:1.4;animation:fade .25s ease;position:relative}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
@@ -72,7 +73,7 @@ body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:
 </div>
 
 <script type="module">
-import { ref, push, onChildAdded, remove } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import { ref, push, onChildAdded, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
@@ -86,7 +87,7 @@ const usersList = document.getElementById("usersList");
 const ADMIN_CODE = "mahtab666777";
 let isAdmin = false;
 let typingTimer;
-let userId = "user_" + Math.floor(Math.random() * 100000);
+let userId = "user_" + Math.floor(Math.random()*100000);
 let selectedUser = null;
 
 /* helpers */
@@ -95,16 +96,48 @@ function timeNow() {
   return d.getHours().toString().padStart(2,"0") + ":" + d.getMinutes().toString().padStart(2,"0");
 }
 
-/* Firebase ref */
+/* Firebase refs */
 const messagesRef = ref(window.db, 'messages');
+const usersRef = ref(window.db, 'users');
 
-/* Load messages in real-time */
-onChildAdded(messagesRef, (data) => {
+/* Add user to users node */
+set(ref(window.db,'users/'+userId),{banned:false});
+
+/* Load users list */
+function loadUsers(){
+  usersList.innerHTML="";
+  onValue(usersRef, snapshot=>{
+    const data = snapshot.val();
+    for(let uid in data){
+      const userDiv = document.createElement("div");
+      userDiv.className="user-item";
+      userDiv.innerHTML = uid + (data[uid].banned ? " 🔒" : "");
+      const banBtn = document.createElement("span");
+      banBtn.className="ban-btn";
+      banBtn.innerText = data[uid].banned ? "Unban" : "Ban";
+      banBtn.onclick = ()=>{
+        update(ref(window.db,'users/'+uid), {banned: !data[uid].banned});
+      };
+      userDiv.appendChild(banBtn);
+      userDiv.onclick=()=>{
+        selectedUser=uid;
+        messages.innerHTML="";
+      };
+      usersList.appendChild(userDiv);
+    }
+  });
+}
+
+/* Load messages */
+onChildAdded(messagesRef, data=>{
   const msg = data.val();
-  if(isAdmin && selectedUser && msg.sender !== selectedUser) return; // admin sees only selected user
+  // filter by selected user if admin
+  if(isAdmin && selectedUser && msg.sender !== selectedUser && msg.sender !== "admin") return;
+
   const div = document.createElement("div");
-  div.className = msg.sender === userId ? "msg user" : (msg.sender === "admin" ? "msg admin" : "msg support");
+  div.className = msg.sender === userId ? "msg user" : (msg.sender==="admin" ? "msg admin" : "msg support");
   div.innerHTML = msg.text + `<div class="meta">${msg.time}</div>`;
+
   if(isAdmin){
     const del = document.createElement("span");
     del.className="delete-btn";
@@ -112,25 +145,24 @@ onChildAdded(messagesRef, (data) => {
     del.onclick = ()=> remove(ref(window.db,'messages/'+data.key));
     div.appendChild(del);
   }
+
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
 });
 
 /* fake online count */
-setInterval(()=>{
-  status.innerText = `online • ${5 + Math.floor(Math.random()*5)} users`;
-},4000);
+setInterval(()=>{status.innerText = `online • ${5+Math.floor(Math.random()*5)} users`;},4000);
 
 /* typing indicator */
 input.addEventListener("input", ()=>{
   typing.style.display="block";
   clearTimeout(typingTimer);
-  typingTimer = setTimeout(()=> typing.style.display="none", 700);
+  typingTimer=setTimeout(()=>typing.style.display="none",700);
 });
 
-/* send message function */
+/* send message */
 function sendMsg(){
-  const text = input.value.trim();
+  const text=input.value.trim();
   if(!text) return;
 
   /* admin login */
@@ -138,19 +170,31 @@ function sendMsg(){
     isAdmin=true;
     adminBar.style.display="block";
     title.innerText="👑 Admin Panel";
+    loadUsers();
     input.value="";
     return;
   }
 
-  const msgObj = {
-    sender: isAdmin ? (selectedUser?"admin":"admin"):userId,
-    text: text,
-    time: timeNow()
+  // check banned
+  const userNode = ref(window.db,'users/'+userId);
+  if(!isAdmin && selectedUser===null){ // normal user
+    onValue(userNode,snap=>{
+      if(snap.val().banned){
+        alert("You are banned!");
+        input.value="";
+        return;
+      }
+    }, {onlyOnce:true});
+  }
+
+  const msgObj={
+    sender: isAdmin ? (selectedUser?"admin":"admin") : userId,
+    text:text,
+    time:timeNow()
   };
 
-  push(messagesRef, msgObj)
-    .then(()=>console.log("Message sent"))
-    .catch(e=>console.error("Firebase push error:", e));
+  push(messagesRef,msgObj).then(()=>console.log("Message sent"))
+  .catch(e=>console.error("Firebase push error:", e));
 
   input.value="";
   typing.style.display="none";
@@ -161,17 +205,6 @@ sendBtn.addEventListener("click", sendMsg);
 
 /* bind Enter key */
 input.addEventListener("keypress",(e)=>{if(e.key==="Enter") sendMsg();});
-
-/* populate fake users for admin demo */
-if(isAdmin){
-  for(let i=1;i<=5;i++){
-    const u = document.createElement("div");
-    u.className="user-item";
-    u.innerText="user_"+i;
-    u.onclick=()=>{selectedUser="user_"+i; messages.innerHTML="";}
-    usersList.appendChild(u);
-  }
-}
 </script>
 
 </body>
