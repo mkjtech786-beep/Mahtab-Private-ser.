@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Telegram Chat V2 PRO</title>
+<title>Telegram Chat V3 ULTRA</title>
 
 <style>
 *{box-sizing:border-box}
@@ -15,131 +15,48 @@ body{
   align-items:center;
   height:100vh;
 }
-
-/* CHAT WRAPPER */
 .chat{
-  width:370px;
-  height:640px;
-  background:#121212;
-  border-radius:16px;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-  box-shadow:0 0 35px rgba(212,175,55,.25);
+  width:380px;height:660px;background:#121212;border-radius:18px;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 0 40px rgba(212,175,55,.3);
 }
-
-/* HEADER */
 .header{
-  padding:14px;
-  background:#161616;
-  border-bottom:1px solid #2a2a2a;
+  padding:14px;background:#161616;border-bottom:1px solid #2a2a2a;
 }
-.header-title{
-  color:#d4af37;
-  font-weight:bold;
-  font-size:17px;
-}
-.header-status{
-  font-size:12px;
-  color:#8f8f8f;
-}
-
-/* ADMIN BAR */
+.header-title{color:#d4af37;font-weight:bold;font-size:17px}
+.header-status{font-size:12px;color:#8f8f8f}
 .admin-bar{
-  display:none;
-  background:linear-gradient(90deg,#3a2a00,#d4af37);
-  color:#000;
-  text-align:center;
-  font-size:12px;
-  padding:6px;
-  font-weight:bold;
+  display:none;background:linear-gradient(90deg,#3a2a00,#d4af37);
+  color:#000;text-align:center;font-size:12px;padding:6px;font-weight:bold
 }
-
-/* MESSAGES */
 .messages{
-  flex:1;
-  padding:12px;
-  overflow-y:auto;
-  background:#0f0f0f;
+  flex:1;padding:12px;overflow-y:auto;background:#0f0f0f;
 }
-
-/* MESSAGE BUBBLE */
 .msg{
-  max-width:75%;
-  padding:10px 12px;
-  margin-bottom:10px;
-  border-radius:14px;
-  font-size:14px;
-  line-height:1.4;
-  animation:fadeIn .25s ease;
+  max-width:78%;padding:10px 12px;margin-bottom:10px;border-radius:14px;
+  font-size:14px;line-height:1.4;animation:fade .25s ease;
 }
-@keyframes fadeIn{
-  from{opacity:0; transform:translateY(4px)}
-  to{opacity:1; transform:none}
-}
-
-.user{
-  background:#1f2a33;
-  color:#fff;
-  margin-left:auto;
-  border-bottom-right-radius:4px;
-}
-
-.support{
-  background:#1a1a1a;
-  color:#d4af37;
-  margin-right:auto;
-  border-bottom-left-radius:4px;
-}
-
-.admin{
-  background:#d4af37;
-  color:#000;
-  margin-right:auto;
-}
-
-/* META (time + ticks) */
-.meta{
-  font-size:10px;
-  opacity:.7;
-  margin-top:4px;
-  text-align:right;
-}
-.support .meta,.admin .meta{ text-align:left }
-
-/* TYPING */
-.typing{
-  display:none;
-  font-size:12px;
-  color:#888;
-  padding:4px 12px;
-}
-
-/* INPUT */
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+.user{background:#1f2a33;color:#fff;margin-left:auto;border-bottom-right-radius:4px}
+.support{background:#1a1a1a;color:#d4af37;margin-right:auto;border-bottom-left-radius:4px}
+.admin{background:#d4af37;color:#000;margin-right:auto}
+.meta{font-size:10px;opacity:.7;margin-top:4px;text-align:right}
+.support .meta,.admin .meta{text-align:left}
+.typing{display:none;font-size:12px;color:#888;padding:4px 12px}
 .input-box{
-  display:flex;
-  padding:10px;
-  background:#161616;
-  border-top:1px solid #2a2a2a;
+  display:flex;padding:10px;background:#161616;border-top:1px solid #2a2a2a
 }
 .input-box input{
-  flex:1;
-  padding:11px;
-  border:none;
-  border-radius:12px;
-  background:#0f0f0f;
-  color:#fff;
-  outline:none;
+  flex:1;padding:11px;border:none;border-radius:12px;
+  background:#0f0f0f;color:#fff;outline:none
 }
 .input-box button{
-  margin-left:8px;
-  padding:11px 16px;
-  border:none;
-  border-radius:12px;
-  background:#d4af37;
-  color:#000;
-  font-weight:bold;
-  cursor:pointer;
+  margin-left:8px;padding:11px 16px;border:none;border-radius:12px;
+  background:#d4af37;color:#000;font-weight:bold;cursor:pointer
+}
+.online-dot{
+  display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:#2ecc71;margin-right:6px
 }
 </style>
 </head>
@@ -147,10 +64,11 @@ body{
 <body>
 
 <div class="chat">
-
   <div class="header" id="header">
-    <div class="header-title">Telegram Help</div>
-    <div class="header-status" id="status">online</div>
+    <div class="header-title">
+      <span class="online-dot"></span>Telegram Help
+    </div>
+    <div class="header-status" id="status">online • 3 users</div>
   </div>
 
   <div class="admin-bar" id="adminBar">👑 ADMIN MODE ENABLED</div>
@@ -168,26 +86,38 @@ body{
     <input id="input" placeholder="Message">
     <button onclick="sendMsg()">➤</button>
   </div>
-
 </div>
 
+<!-- Sounds -->
+<audio id="sendSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+<audio id="receiveSound" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
+
 <script>
-const messages = document.getElementById("messages");
-const input = document.getElementById("input");
-const typing = document.getElementById("typing");
-const adminBar = document.getElementById("adminBar");
-const header = document.getElementById("header");
+const messages=document.getElementById("messages");
+const input=document.getElementById("input");
+const typing=document.getElementById("typing");
+const adminBar=document.getElementById("adminBar");
+const header=document.getElementById("header");
+const status=document.getElementById("status");
+const sendSound=document.getElementById("sendSound");
+const receiveSound=document.getElementById("receiveSound");
 
 const ADMIN_CODE="mahtab666777";
 let isAdmin=false;
 let typingTimer;
 
-/* time helper */
+/* helpers */
 function timeNow(){
   const d=new Date();
   return d.getHours().toString().padStart(2,"0")+":"+
          d.getMinutes().toString().padStart(2,"0");
 }
+
+/* fake online users */
+setInterval(()=>{
+  const users=2+Math.floor(Math.random()*5);
+  status.innerText=`online • ${users} users`;
+},4000);
 
 /* typing indicator */
 input.addEventListener("input",()=>{
@@ -196,25 +126,34 @@ input.addEventListener("input",()=>{
   typingTimer=setTimeout(()=>typing.style.display="none",700);
 });
 
+/* BOT replies */
+function botReply(text){
+  text=text.toLowerCase();
+  if(text.includes("hello")||text.includes("hi")) return "Hello 👋 How can I assist you?";
+  if(text.includes("withdraw")) return "Please complete bonus requirements before withdraw.";
+  if(text.includes("problem")) return "Sorry for inconvenience, our team is checking.";
+  if(text.includes("prediction")) return "Prediction updates every 1 minute ⏱️";
+  return "Support will reply shortly.";
+}
+
 /* send message */
 function sendMsg(){
   const text=input.value.trim();
   if(!text) return;
 
-  /* ADMIN LOGIN */
   if(text===ADMIN_CODE){
     isAdmin=true;
     adminBar.style.display="block";
-    header.querySelector(".header-title").innerText="Admin Panel";
+    header.querySelector(".header-title").innerHTML="👑 Admin Panel";
     input.value="";
     return;
   }
 
   const u=document.createElement("div");
   u.className="msg user";
-  u.innerHTML=`${text}
-    <div class="meta">${timeNow()} ✔✔</div>`;
+  u.innerHTML=`${text}<div class="meta">${timeNow()} ✔✔</div>`;
   messages.appendChild(u);
+  sendSound.play();
   input.value="";
   messages.scrollTop=messages.scrollHeight;
 
@@ -224,11 +163,10 @@ function sendMsg(){
     typing.style.display="none";
     const r=document.createElement("div");
     r.className="msg "+(isAdmin?"admin":"support");
-    r.innerHTML=(isAdmin
-      ?"Admin received your message."
-      :"Support will reply shortly.")+
+    r.innerHTML=(isAdmin?"Admin received your message.":botReply(text))+
       `<div class="meta">${timeNow()}</div>`;
     messages.appendChild(r);
+    receiveSound.play();
     messages.scrollTop=messages.scrollHeight;
   },1200);
 }
