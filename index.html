@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Support Chat Pro</title>
+<title>Support Chat VIP</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
@@ -207,20 +207,20 @@ startUser();
 </script>
 
 <style>
-body { margin:0; font-family:'Poppins',sans-serif; background:#0f172a; color:#fff; }
+body { margin:0; font-family:'Poppins',sans-serif; background:#0b0b0f; color:#fff; }
 .chat { display:flex; height:100vh; }
-#users { width:240px; background:#020617; display:none; overflow-y:auto; border-right:1px solid #1e293b; }
-.user { padding:12px 10px; border-bottom:1px solid #1e293b; cursor:pointer; border-radius:8px; }
-.user:hover { background:#1e293b; transform:scale(1.02); transition:0.2s; }
-.user small { display:block; color:#94a3b8; font-size:11px; }
-.main { flex:1; display:flex; flex-direction:column; background:#0f172a; }
-.header { padding:16px; background:linear-gradient(90deg,#4b6cb7,#182848); font-weight:600; font-size:18px; color:#fff; }
-.admin-tools { display:none; gap:8px; padding:10px; background:#1e293b; border-bottom:1px solid #2e3a59; }
-.admin-tools button { background:linear-gradient(90deg,#f5d76e,#f1c40f); color:#000; padding:8px 12px; font-weight:500; cursor:pointer; border-radius:8px; }
-.admin-tools button:hover { opacity:0.85; transform:scale(1.05); box-shadow:0 0 12px rgba(245,215,110,0.6); }
-.messages { flex:1; padding:16px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; scroll-behavior:smooth; }
+#users { width:240px; background:#111; display:none; overflow-y:auto; border-right:2px solid #FFD700; }
+.user { padding:12px 10px; border-bottom:1px solid #222; cursor:pointer; border-radius:10px; transition:0.2s; }
+.user:hover { background:#222; transform:scale(1.03); box-shadow:0 0 8px #FFD70033; }
+.user small { display:block; color:#ccc; font-size:11px; }
+.main { flex:1; display:flex; flex-direction:column; background:#0b0b0f; }
+.header { padding:16px; font-weight:600; font-size:18px; color:#FFD700; background:linear-gradient(90deg,#1a1a1a,#111); border-bottom:1px solid #333; }
+.admin-tools { display:none; gap:8px; padding:10px; background:#111; border-bottom:1px solid #222; }
+.admin-tools button { background:linear-gradient(90deg,#FFD700,#F0C420); color:#111; padding:10px 16px; font-weight:600; cursor:pointer; border-radius:12px; transition:0.3s; box-shadow:0 0 12px #FFD70066; }
+.admin-tools button:hover { transform:scale(1.05); box-shadow:0 0 18px #FFD700AA; }
+.messages { flex:1; padding:16px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; scroll-behavior:smooth; }
 #typingIndicator { display:flex; gap:4px; padding-left:10px; margin-bottom:6px; }
-.typing-dot { width:8px; height:8px; background:#f5d76e; border-radius:50%; animation:bounce 1s infinite; }
+.typing-dot { width:10px; height:10px; background:#FFD700; border-radius:50%; animation:bounce 1s infinite; }
 .typing-dot:nth-child(2){animation-delay:0.2s;} .typing-dot:nth-child(3){animation-delay:0.4s;}
 @keyframes bounce {0%,80%,100%{transform:scale(0);}40%{transform:scale(1);}}
 .msg { display:flex; margin-bottom:6px; opacity:0; transform:translateY(20px); animation:slideIn 0.4s forwards; }
@@ -229,21 +229,17 @@ body { margin:0; font-family:'Poppins',sans-serif; background:#0f172a; color:#ff
 @keyframes pop {0%{transform:scale(0.8);opacity:0;}60%{transform:scale(1.05);opacity:1;}100%{transform:scale(1);opacity:1;}}
 .user.msg { justify-content:flex-end; }
 .admin.msg { justify-content:flex-start; }
-.bubble { max-width:70%; padding:12px 16px; border-radius:16px; box-shadow:0 2px 6px rgba(0,0,0,0.3); position:relative; transition:0.3s; }
-.bubble:hover { transform:scale(1.03); box-shadow:0 4px 12px rgba(0,0,0,0.4); }
-
-/* Glow effect */
-.user .bubble { background:#2563eb; color:#fff; border-bottom-right-radius:4px; box-shadow:0 0 8px #2563eb,0 0 12px #2563eb50; animation:glow 1.5s infinite alternate; }
-.admin .bubble { background:#f5d76e; color:#000; border-bottom-left-radius:4px; box-shadow:0 0 8px #f5d76e,0 0 12px #f5d76e50; animation:glow 1.5s infinite alternate; }
-@keyframes glow { 0%{box-shadow:0 0 4px currentColor,0 0 8px currentColor50;}50%{box-shadow:0 0 12px currentColor,0 0 20px currentColor80;}100%{box-shadow:0 0 4px currentColor,0 0 8px currentColor50;} }
-
+.bubble { max-width:70%; padding:14px 18px; border-radius:20px; box-shadow:0 2px 8px rgba(0,0,0,0.5); position:relative; transition:0.3s; font-size:14px; }
+.user .bubble { background:#222; color:#fff; border-bottom-right-radius:4px; box-shadow:0 0 10px #FFD70033; }
+.admin .bubble { background:linear-gradient(135deg,#FFD700,#F0C420); color:#111; border-bottom-left-radius:4px; box-shadow:0 0 12px #FFD700AA,0 0 20px #FFD70055; animation:glow 1.5s infinite alternate; }
+@keyframes glow { 0%{box-shadow:0 0 6px #FFD700AA,0 0 12px #FFD70033;}50%{box-shadow:0 0 18px #FFD700FF,0 0 28px #FFD70066;}100%{box-shadow:0 0 6px #FFD700AA,0 0 12px #FFD70033;} }
 .bubble span { display:block; font-size:10px; opacity:0.7; margin-top:4px; text-align:right; }
 .bubble button { background:transparent; border:none; font-size:12px; cursor:pointer; margin-left:6px; }
-.input { display:flex; padding:12px; border-top:1px solid #1e293b; background:#1e293b; }
-input { flex:1; padding:12px 14px; border-radius:12px; border:none; font-size:14px; outline:none; background:#0f172a; color:#fff; }
-input::placeholder { color:#94a3b8; }
-button#send { margin-left:8px; padding:12px 18px; border-radius:12px; background:linear-gradient(90deg,#4b6cb7,#182848); color:#fff; font-weight:500; cursor:pointer; border:none; }
-button#send:hover { opacity:0.85; }
+.input { display:flex; padding:12px; border-top:1px solid #222; background:#111; }
+input { flex:1; padding:12px 14px; border-radius:14px; border:none; font-size:14px; outline:none; background:#222; color:#fff; }
+input::placeholder { color:#ccc; }
+button#send { margin-left:8px; padding:12px 18px; border-radius:14px; background:linear-gradient(90deg,#FFD700,#F0C420); color:#111; font-weight:600; cursor:pointer; border:none; transition:0.3s; box-shadow:0 0 12px #FFD70066; }
+button#send:hover { transform:scale(1.05); box-shadow:0 0 18px #FFD700AA; }
 button#send:active { transform:scale(0.95); }
 #notice { font-size:12px; color:#f87171; padding-left:12px; margin-bottom:4px; }
 </style>
@@ -252,7 +248,7 @@ button#send:active { transform:scale(0.95); }
 <div class="chat">
   <div id="users"></div>
   <div class="main">
-    <div class="header" id="title">Support Chat</div>
+    <div class="header" id="title">Support Chat VIP</div>
     <div class="admin-tools" id="adminTools">
       <button id="lockBtn">🔒 Lock</button>
       <button id="unlockBtn">🔓 Unlock</button>
