@@ -8,6 +8,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
+/* ------------------- FIREBASE ------------------- */
 const firebaseConfig = {
   apiKey: "AIzaSyAqfguS1ucAtklcl06eB1JIWQr46XMpe7g",
   authDomain: "safe-chat-c0b9c.firebaseapp.com",
@@ -21,8 +22,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* ================= BASIC SETUP ================= */
-
+/* ------------------- USER / ADMIN ------------------- */
 let userId = localStorage.getItem("support_uid");
 if (!userId) {
   userId = "user_" + Math.random().toString(36).substr(2, 8);
@@ -31,23 +31,22 @@ if (!userId) {
 
 const ADMIN_CODE = "mahtab666777";
 let isAdmin = false;
-let activeUserForAdmin = null;
+let selectedUser = null;
 
+/* ------------------- DOM ------------------- */
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
 const adminBar = document.getElementById("adminBar");
 const title = document.getElementById("title");
 
-const timeNow = () =>
-  new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+/* ------------------- TIME ------------------- */
+const timeNow = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-/* ================= USER MODE ================= */
-
+/* ------------------- USER LISTENER ------------------- */
 function startUserMode() {
-  const userRef = ref(db, "supportChats/" + userId + "/messages");
-
-  onChildAdded(userRef, snap => {
+  const myRef = ref(db, "supportChats/" + userId + "/messages");
+  onChildAdded(myRef, snap => {
     const m = snap.val();
     const div = document.createElement("div");
     div.className = "msg " + (m.sender === "admin" ? "admin" : "user");
@@ -57,43 +56,34 @@ function startUserMode() {
   });
 }
 
-/* ================= ADMIN MODE ================= */
-
+/* ------------------- ADMIN LISTENER ------------------- */
 function startAdminMode() {
   messages.innerHTML = "";
   adminBar.style.display = "block";
   title.innerText = "👑 Admin Panel";
 
-  const allUsersRef = ref(db, "supportChats");
-
-  onChildAdded(allUsersRef, userSnap => {
+  const allRef = ref(db, "supportChats");
+  onChildAdded(allRef, userSnap => {
     const uid = userSnap.key;
+    selectedUser = uid; // last active user
 
-    onChildAdded(
-      ref(db, "supportChats/" + uid + "/messages"),
-      msgSnap => {
-        const m = msgSnap.val();
-
-        activeUserForAdmin = uid; // 🔑 VERY IMPORTANT
-
-        const div = document.createElement("div");
-        div.className = "msg user";
-        div.innerHTML =
-          `[${uid}] ${m.text}<div class="meta">${m.time}</div>`;
-        messages.appendChild(div);
-        messages.scrollTop = messages.scrollHeight;
-      }
-    );
+    onChildAdded(ref(db, "supportChats/" + uid + "/messages"), msgSnap => {
+      const m = msgSnap.val();
+      const div = document.createElement("div");
+      div.className = "msg " + (m.sender === "admin" ? "admin" : "user");
+      div.innerHTML = `[${uid}] ${m.text}<div class="meta">${m.time}</div>`;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+    });
   });
 }
 
-/* ================= SEND MESSAGE ================= */
-
+/* ------------------- SEND MESSAGE ------------------- */
 function sendMsg() {
   const text = input.value.trim();
   if (!text) return;
 
-  /* ADMIN LOGIN */
+  // ADMIN LOGIN
   if (!isAdmin && text === ADMIN_CODE) {
     isAdmin = true;
     input.value = "";
@@ -101,41 +91,31 @@ function sendMsg() {
     return;
   }
 
-  /* ADMIN REPLY */
+  // ADMIN REPLY
   if (isAdmin) {
-    if (!activeUserForAdmin) {
-      alert("No user message yet");
-      return;
-    }
-
-    push(ref(db, "supportChats/" + activeUserForAdmin + "/messages"), {
+    if (!selectedUser) { alert("No user yet"); return; }
+    push(ref(db, "supportChats/" + selectedUser + "/messages"), {
       sender: "admin",
       text,
       time: timeNow()
     });
-
     input.value = "";
     return;
   }
 
-  /* USER MESSAGE */
+  // USER MESSAGE
   push(ref(db, "supportChats/" + userId + "/messages"), {
     sender: "user",
     text,
     time: timeNow()
   });
-
   input.value = "";
 }
 
-/* ================= START ================= */
-
+/* ------------------- INIT ------------------- */
 startUserMode();
-
 sendBtn.onclick = sendMsg;
-input.addEventListener("keypress", e => {
-  if (e.key === "Enter") sendMsg();
-});
+input.addEventListener("keypress", e => e.key === "Enter" && sendMsg());
 </script>
 
 <style>
