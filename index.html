@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Support Chat - Media Version</title>
+<title>Support Chat - Media Working</title>
 <style>
 body{margin:0;font-family:Arial;background:#0b0b0f;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;}
 .chat{width:100%;max-width:500px;height:90vh;background:#121212;border-radius:16px;display:flex;flex-direction:column;position:relative;}
@@ -28,7 +28,7 @@ audio{max-width:200px;border-radius:8px;margin-bottom:4px;}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, set, update, remove, onValue } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, set, update, onValue } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
 /* ---------------- FIREBASE ---------------- */
@@ -89,7 +89,7 @@ function sendMsg(){
     sender:isAdmin?"admin":"user",
     type:"text",
     text,
-    time:new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})
+    time:new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })
   });
   sendSound.play();
   input.value="";
@@ -108,20 +108,20 @@ fileInput.onchange = async e=>{
     sender:isAdmin?"admin":"user",
     type:"image",
     url,
-    time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})
+    time:new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})
   });
   sendSound.play();
 };
 
 /* ---------------- VOICE ---------------- */
 let mediaRecorder,audioChunks=[];
-recordBtn.onclick = async ()=>{
+recordBtn.onclick = async () => {
   if(!mediaRecorder || mediaRecorder.state==="inactive"){
     const stream = await navigator.mediaDevices.getUserMedia({audio:true});
     mediaRecorder = new MediaRecorder(stream);
-    audioChunks=[];
-    mediaRecorder.ondataavailable = e=>audioChunks.push(e.data);
-    mediaRecorder.onstop = async ()=>{
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = async () => {
       const blob = new Blob(audioChunks,{type:'audio/mp3'});
       const file = new File([blob],`voice_${Date.now()}.mp3`,{type:'audio/mp3'});
       const storageRef = sRef(storage,`chatAudio/${uid}/${file.name}`);
@@ -132,7 +132,7 @@ recordBtn.onclick = async ()=>{
         sender:isAdmin?"admin":"user",
         type:"audio",
         url,
-        time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})
+        time:new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })
       });
       sendSound.play();
     };
@@ -169,7 +169,7 @@ function renderMsg(m){
   d.className="msg "+m.sender;
   let content="";
   if(m.type==="text") content=m.text;
-  else if(m.type==="image") content=`<img src="${m.url}"/>`;
+  else if(m.type==="image") content=`<img src="${m.url}" style="max-width:200px;border-radius:12px"/>`;
   else if(m.type==="audio") content=`<audio controls src="${m.url}"></audio>`;
   d.innerHTML=`<div class="bubble">${content}<span>${m.time}</span></div>`;
   messages.appendChild(d);
