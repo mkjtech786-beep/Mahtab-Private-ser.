@@ -1,167 +1,371 @@
-<script type="module">
-import { ref, push, onChildAdded, onValue, set, update, remove, get } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Telegram Chat V4 PRO (Admin Enabled)</title>
 
-const messages = document.getElementById("messages");
+<script type="module">
+  // NOTE: I have updated the Firebase SDK version slightly for stability,
+  // and added necessary imports for get, update, set, and onValue for admin features.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js"; 
+  import { getDatabase, ref, push, onChildAdded, get, update, set, onValue } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+
+  // ✅ Firebase config (Using the configuration you provided)
+  const firebaseConfig = {
+    apiKey: "AIzaSyAqfguS1ucAtklcl06eB1JIWQr46XMpe7g",
+    authDomain: "safe-chat-c0b9c.firebaseapp.com",
+    databaseURL: "https://safe-chat-c0b9c-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "safe-chat-c0b9c",
+    storageBucket: "safe-chat-c0b9c.firebasestorage.app",
+    messagingSenderId: "119640275300",
+    appId: "1:119640275300:web:20ae984f4af1ffe6a62271"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  window.db = getDatabase(app);
+</script>
+
+<style>
+/* --- Your Existing CSS --- */
+*{box-sizing:border-box}
+body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh}
+.chat{width:380px;height:660px;background:#121212;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 40px rgba(212,175,55,.3)}
+.header{padding:14px;background:#161616;border-bottom:1px solid #2a2a2a}
+.header-title{color:#d4af37;font-weight:bold}
+.header-status{font-size:12px;color:#8f8f8f}
+.admin-bar{display:none;background:#d4af37;color:#000;text-align:center;font-size:12px;padding:6px;font-weight:bold}
+.messages{flex:1;padding:12px;overflow-y:auto;background:#0f0f0f}
+.msg{max-width:78%;padding:10px 12px;margin-bottom:10px;border-radius:14px;font-size:14px;line-height:1.4;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
+.user{background:#1f2a33;color:#fff;margin-left:auto}
+.support{background:#1a1a1a;color:#d4af37;margin-right:auto}
+.admin{background:#d4af37;color:#000;margin-right:auto}
+.meta{font-size:10px;opacity:.6;margin-top:4px}
+.user .meta{text-align:right}
+.support .meta,.admin .meta{text-align:left}
+.typing{display:none;font-size:12px;color:#888;padding:4px 12px}
+.input-box{display:flex;padding:10px;background:#161616;border-top:1px solid #2a2a2a}
+.input-box input{flex:1;padding:11px;border:none;border-radius:12px;background:#0f0f0f;color:#fff;outline:none}
+.input-box button{margin-left:8px;padding:11px 16px;border:none;border-radius:12px;background:#d4af37;color:#000;font-weight:bold;cursor:pointer}
+/* --- New Admin Panel Styles --- */
+.user-list-item{
+    padding:10px; 
+    margin-bottom:8px; 
+    background:#1f2a33; 
+    color:#fff; 
+    border-radius:8px; 
+    border: 1px solid #2a2a2a;
+    transition: background 0.2s;
+}
+.user-list-item:hover{
+    background:#2a3b4c;
+}
+.list-btn {
+    padding:4px 8px; 
+    border:none; 
+    border-radius:4px; 
+    margin-top:5px; 
+    font-weight: bold;
+    cursor:pointer;
+}
+.ban-btn{ background:#ff4d4d; color:#000; }
+.unban-btn{ background:#4dff4d; color:#000; }
+.chat-btn{ background:#338aff; color:#fff; margin-left:5px; }
+.back-btn{
+    background:#1a1a1a; 
+    color:#fff; 
+    padding:8px; 
+    border:none; 
+    border-radius:8px; 
+    width:100%; 
+    margin-bottom:10px; 
+    cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="chat">
+  <div class="header">
+    <div class="header-title" id="title">Telegram Help</div>
+    <div class="header-status" id="status">online • 0 users</div>
+  </div>
+
+  <div class="admin-bar" id="adminBar">👑 ADMIN MODE ENABLED</div>
+
+  <div class="messages" id="messages"></div>
+
+  <div class="typing" id="typing">typing…</div>
+
+  <div class="input-box">
+    <input id="input" placeholder="Type message">
+    <button id="sendBtn">➤</button>
+  </div>
+</div>
+
+<script type="module">
+// Import statements are moved to the top <script type="module"> block for global use.
+
+const messagesContainer = document.getElementById("messages");
 const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 const adminBar = document.getElementById("adminBar");
 const title = document.getElementById("title");
 const status = document.getElementById("status");
 const sendBtn = document.getElementById("sendBtn");
-const usersList = document.getElementById("usersList");
 
 const ADMIN_CODE = "mahtab666777";
 let isAdmin = false;
 let typingTimer;
-let userId = "user_" + Math.floor(Math.random()*100000);
-let selectedUser = null;
+// --- IMPORTANT: Use localStorage for persistent User ID (not random on every load) ---
+let userId = localStorage.getItem('chatUserId');
+if (!userId) {
+    userId = "user_" + Math.floor(Math.random() * 100000);
+    localStorage.setItem('chatUserId', userId);
+}
+// -----------------------------------------------------------------------------------
+
+let currentChattingUserId = null; // Tracks which user the admin is currently chatting with
+
+/* Firebase refs */
+// We will use a main 'public' chat and separate 'chats/{userId}' paths for private chats.
+const PUBLIC_MESSAGES_REF = ref(window.db, 'public_messages'); 
+const usersRef = ref(window.db, 'users'); 
 
 /* helpers */
 function timeNow() {
   const d = new Date();
-  return d.getHours().toString().padStart(2,"0") + ":" + d.getMinutes().toString().padStart(2,"0");
+  return d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
 }
 
-/* Firebase refs */
-const messagesRef = ref(window.db, 'messages');
-const usersRef = ref(window.db, 'users');
+/* -----------------------------------------------------------------
+   ADMIN/USER FUNCTIONALITY 
+   ----------------------------------------------------------------- */
 
-/* Add user to users node */
-set(ref(window.db,'users/'+userId),{banned:false, muted:false, vip:false});
+/* 1. Load Messages (Public or Private) */
+let messageListener = null; // To manage the active listener
 
-/* Load users list */
-function loadUsers(){
-  usersList.innerHTML="";
-  onValue(usersRef, snapshot=>{
-    const data = snapshot.val() || {};
-    usersList.innerHTML = "";
-    for(let uid in data){
-      const userDiv = document.createElement("div");
-      userDiv.className="user-item";
-      let statusTxt = data[uid].banned ? "🔒" : (data[uid].muted ? "🔇" : "");
-      if(data[uid].vip) statusTxt += " ⭐";
-      userDiv.innerHTML = uid + " " + statusTxt;
-
-      // Ban/Unban button
-      const banBtn = document.createElement("span");
-      banBtn.className="ban-btn";
-      banBtn.innerText = data[uid].banned ? "Unban" : "Ban";
-      banBtn.onclick = ()=>{
-        update(ref(window.db,'users/'+uid), {banned: !data[uid].banned});
-      };
-      userDiv.appendChild(banBtn);
-
-      // Mute/Unmute button
-      const muteBtn = document.createElement("span");
-      muteBtn.className="ban-btn";
-      muteBtn.style.marginLeft="4px";
-      muteBtn.innerText = data[uid].muted ? "Unmute" : "Mute";
-      muteBtn.onclick = ()=>{
-        update(ref(window.db,'users/'+uid), {muted: !data[uid].muted});
-      };
-      userDiv.appendChild(muteBtn);
-
-      // VIP toggle
-      const vipBtn = document.createElement("span");
-      vipBtn.className="ban-btn";
-      vipBtn.style.marginLeft="4px";
-      vipBtn.innerText = data[uid].vip ? "Remove VIP" : "VIP";
-      vipBtn.onclick = ()=>{
-        update(ref(window.db,'users/'+uid), {vip: !data[uid].vip});
-      };
-      userDiv.appendChild(vipBtn);
-
-      // Select user to view messages
-      userDiv.onclick=()=>{
-        selectedUser = uid;
-        messages.innerHTML="";
-      };
-
-      usersList.appendChild(userDiv);
+function loadMessages(chatRef) {
+    // Stop previous listener if active
+    if (messageListener) {
+        messageListener(); // Firebase function to detach listener
+        messageListener = null;
     }
-  });
+    
+    messagesContainer.innerHTML = ""; // Clear existing messages
+
+    // Set up new listener for the specific chat path
+    messageListener = onChildAdded(chatRef, (data) => {
+        const msg = data.val();
+        const div = document.createElement("div");
+        
+        // Determine style based on sender
+        if (msg.sender === userId && !isAdmin) {
+             div.className = "msg user"; // Regular user's own message
+        } else if (msg.sender === currentChattingUserId && isAdmin) {
+             div.className = "msg user"; // Admin view: message from the user being chatted with
+        } else if (msg.sender === 'admin' && isAdmin) {
+             div.className = "msg admin"; // Admin view: message from admin
+        } else if (msg.sender === 'admin') {
+             div.className = "msg support"; // User view: message from admin/support
+        } else {
+             // Fallback for user's own message in public chat
+             div.className = "msg user"; 
+        }
+
+        div.innerHTML = msg.text + `<div class="meta">${msg.time}</div>`;
+        messagesContainer.appendChild(div);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    });
 }
 
-/* Load messages */
-onChildAdded(messagesRef, data=>{
-  const msg = data.val();
+/* 2. User Ban Check and Info Update */
+async function checkBanStatus() {
+  const userSnapshot = await get(ref(window.db, `users/${userId}`));
+  const userData = userSnapshot.val();
 
-  // filter messages: admin sees selected user only
-  if(isAdmin && selectedUser && msg.sender !== selectedUser && msg.sender !== "admin") return;
-
-  const div = document.createElement("div");
-  div.className = msg.sender === userId ? "msg user" : (msg.sender==="admin" ? "msg admin" : "msg support");
-  div.innerHTML = msg.text + `<div class="meta">${msg.time}</div>`;
-
-  if(isAdmin){
-    const del = document.createElement("span");
-    del.className="delete-btn";
-    del.innerText="×";
-    del.onclick = ()=> remove(ref(window.db,'messages/'+data.key));
-    div.appendChild(del);
+  if (userData && userData.isBanned) {
+    alert("❌ آپ کو اس چیٹ سے بین (Ban) کر دیا گیا ہے۔");
+    input.disabled = true;
+    sendBtn.disabled = true;
+    input.placeholder = "آپ بینڈ ہیں (You are banned).";
+    return true; // Banned
   }
 
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-});
+  // Save/Update user information
+  await set(ref(window.db, `users/${userId}`), {
+    isBanned: userData?.isBanned || false, 
+    lastSeen: timeNow(),
+    // We only need the user ID for tracking
+  });
+  return false; // Not banned
+}
 
-/* fake online count */
-setInterval(()=>{status.innerText = `online • ${5+Math.floor(Math.random()*5)} users`;},4000);
 
-/* typing indicator */
-input.addEventListener("input", ()=>{
-  typing.style.display="block";
-  clearTimeout(typingTimer);
-  typingTimer=setTimeout(()=>typing.style.display="none",700);
-});
+/* 3. Send Message Function */
+async function sendMsg() {
+  const text = input.value.trim();
+  if (!text) return;
 
-/* send message */
-async function sendMsg(){
-  const text=input.value.trim();
-  if(!text) return;
-
-  /* admin login */
-  if(text===ADMIN_CODE){
-    isAdmin=true;
-    adminBar.style.display="block";
-    title.innerText="👑 Admin Panel";
-    loadUsers();
-    input.value="";
+  /* Admin login logic */
+  if (text === ADMIN_CODE && !isAdmin) {
+    isAdmin = true;
+    adminBar.style.display = "block";
+    title.innerText = "👑 ایڈمن پینل";
+    input.value = "";
+    loadAdminPanel(); // Load the admin user list
     return;
   }
-
-  // check banned or muted for normal users
-  const userNode = ref(window.db,'users/'+userId);
-  const snap = await get(userNode);
-  if(!isAdmin){
-    const userData = snap.val();
-    if(userData.banned){ alert("You are banned!"); input.value=""; return; }
-    if(userData.muted){ alert("You are muted!"); input.value=""; return; }
+  
+  // Admin message restriction check
+  if (isAdmin && !currentChattingUserId) {
+    alert("براہ کرم چیٹ شروع کرنے کے لیے یوزر لسٹ میں سے ایک یوزر کو منتخب کریں۔");
+    input.value = "";
+    return;
+  }
+  
+  // Non-Admin: Check ban status
+  if (!isAdmin) {
+    const isBanned = await checkBanStatus();
+    if (isBanned) return;
   }
 
-  let msgObj;
-  if(isAdmin){
-    // Admin sending to selected user
-    if(selectedUser){
-      msgObj = { sender:"admin", text:text, user:selectedUser, time:timeNow() };
-    } else {
-      // broadcast to all
-      msgObj = { sender:"admin", text:text, user:"all", time:timeNow() };
-    }
-  } else {
-    msgObj = { sender:userId, text:text, time:timeNow() };
-  }
+  const msgObj = {
+    sender: isAdmin ? "admin" : userId,
+    text: text,
+    time: timeNow()
+  };
 
-  push(messagesRef,msgObj).then(()=>console.log("Message sent"))
-  .catch(e=>console.error("Firebase push error:", e));
+  // Determine the correct Firebase path for the message
+  // If admin is chatting, use the private chat path. Otherwise, use public chat path.
+  const chatRefPath = isAdmin && currentChattingUserId
+      ? ref(window.db, `chats/${currentChattingUserId}`)
+      : PUBLIC_MESSAGES_REF;
+  
+  push(chatRefPath, msgObj)
+    .then(() => {
+        // Update last message time for the user (only for regular users)
+        if (!isAdmin) {
+             update(ref(window.db, `users/${userId}`), { lastMsgTime: Date.now() });
+        }
+    })
+    .catch(e => console.error("Firebase push error:", e));
 
-  input.value="";
-  typing.style.display="none";
+  input.value = "";
+  typing.style.display = "none";
 }
+
+/* 4. Admin Panel Functions (User List and Controls) */
+
+function renderUserList(users) {
+    messagesContainer.innerHTML = `<h3 style="color:#d4af37; text-align:center;">👥 یوزر لسٹ</h3>`;
+    
+    // Button to view all public messages (Optional, but useful)
+    const publicChatBtn = document.createElement('button');
+    publicChatBtn.innerText = "تمام پبلک پیغامات دیکھیں";
+    publicChatBtn.className = 'back-btn';
+    publicChatBtn.onclick = () => {
+        currentChattingUserId = null;
+        title.innerText = "Telegram Help (Public Chat)";
+        loadMessages(PUBLIC_MESSAGES_REF); // Load public chat view
+    };
+    messagesContainer.appendChild(publicChatBtn);
+
+    Object.keys(users).forEach(uid => {
+        const user = users[uid];
+        const item = document.createElement('div');
+        const banStatus = user.isBanned ? '❌ بینڈ' : '✅ فعال';
+        const banBtnText = user.isBanned ? 'UNBAN کریں' : 'BAN کریں';
+        const banBtnClass = user.isBanned ? 'unban-btn' : 'ban-btn';
+
+        item.className = 'user-list-item';
+        item.innerHTML = `
+            <strong>${uid}</strong> 
+            <span style="color:${user.isBanned ? '#ff4d4d' : '#4dff4d'}; font-size:12px;">(${banStatus})</span>
+            <div style="font-size:10px; opacity:0.7;">آخری بار: ${user.lastSeen || 'N/A'}</div>
+            <button data-uid="${uid}" class="list-btn ${banBtnClass}">${banBtnText}</button>
+            <button data-uid="${uid}" class="list-btn chat-btn">CHAT کریں</button>
+        `;
+        messagesContainer.appendChild(item);
+    });
+    
+    // Add event listeners for Ban/Unban and Chat buttons
+    messagesContainer.querySelectorAll('.list-btn').forEach(btn => {
+        btn.onclick = async (e) => {
+            const uid = e.target.getAttribute('data-uid');
+            if (e.target.innerText.includes('BAN')) {
+                // Ban/Unban action
+                const isCurrentlyBanned = e.target.innerText === 'BAN کریں';
+                await update(ref(window.db, `users/${uid}`), { isBanned: isCurrentlyBanned });
+                loadAdminPanel(); // Refresh list
+            } else if (e.target.innerText.includes('CHAT')) {
+                // Switch to private chat view
+                currentChattingUserId = uid;
+                title.innerText = `💬 چیٹ: ${uid}`;
+                loadUserChat(uid);
+            }
+        };
+    });
+}
+
+// Function to load the user list view
+function loadAdminPanel() {
+    // Listen for changes in the users path to keep the list updated
+    onValue(usersRef, (snapshot) => {
+        const users = snapshot.val() || {};
+        renderUserList(users);
+    });
+}
+
+// Function to load the private chat view
+function loadUserChat(uid) {
+    messagesContainer.innerHTML = "";
+    
+    // Back button to user list
+    const backBtn = document.createElement('button');
+    backBtn.innerText = "← یوزرز لسٹ پر واپس جائیں";
+    backBtn.className = 'back-btn';
+    backBtn.onclick = () => {
+        currentChattingUserId = null;
+        loadAdminPanel();
+    };
+    messagesContainer.appendChild(backBtn);
+
+    const chatPath = ref(window.db, `chats/${uid}`);
+    
+    loadMessages(chatPath); // Load messages from the private chat path
+}
+
+
+/* -----------------------------------------------------------------
+   INITIALIZATION AND BINDING 
+   ----------------------------------------------------------------- */
+
+// Start by loading public messages when the app first opens
+loadMessages(PUBLIC_MESSAGES_REF);
+
+
+/* fake online count */
+setInterval(() => {
+  status.innerText = `online • ${5 + Math.floor(Math.random() * 5)} users`;
+}, 4000);
+
+/* typing indicator */
+input.addEventListener("input", () => {
+  typing.style.display = "block";
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => typing.style.display = "none", 700);
+});
 
 /* bind send button */
 sendBtn.addEventListener("click", sendMsg);
 
 /* bind Enter key */
-input.addEventListener("keypress",(e)=>{if(e.key==="Enter") sendMsg();});
+input.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendMsg();
+});
 </script>
+
+</body>
+</html>
