@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Support Chat Pro</title>
-
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 
 <script type="module">
@@ -13,6 +12,7 @@ import {
   getDatabase, ref, push, onChildAdded, onValue,
   set, update, remove, onDisconnect
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
 /* ---------------- FIREBASE ---------------- */
 const firebaseConfig = {
@@ -20,13 +20,13 @@ const firebaseConfig = {
   authDomain: "safe-chat-c0b9c.firebaseapp.com",
   databaseURL: "https://safe-chat-c0b9c-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "safe-chat-c0b9c",
-  storageBucket: "safe-chat-c0b9c.firebasestorage.app",
+  storageBucket: "safe-chat-c0b9c.appspot.com",
   messagingSenderId: "119640275300",
   appId: "1:119640275300:web:20ae984f4af1ffe6a62271"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const storage = getStorage(app);
 
 /* ---------------- STATE ---------------- */
 const ADMIN_CODE = "mahtab666777";
@@ -34,26 +34,29 @@ let uid = localStorage.getItem("uid") || "user_" + Math.random().toString(36).sl
 let name = localStorage.getItem("name");
 let isAdmin = false;
 let activeUser = null;
-
 localStorage.setItem("uid", uid);
 
 /* ---------------- DOM ---------------- */
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("send");
-const title = document.getElementById("title");
+const emojiBtn = document.getElementById("emojiBtn");
+const attachBtn = document.getElementById("attachBtn");
+const recordBtn = document.getElementById("recordBtn");
+const fileInput = document.getElementById("fileInput");
 const usersDiv = document.getElementById("users");
 const adminTools = document.getElementById("adminTools");
 const notice = document.getElementById("notice");
+const emojiBox = document.getElementById("emojiBox");
 
-/* ---------------- SOUND ---------------- */
+/* ---------------- SOUNDS ---------------- */
 const sendSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3");
 const receiveSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
 
 /* ---------------- USER NAME ---------------- */
-if (!name) {
+if(!name){
   name = prompt("Enter your name");
-  if (!name) name = "Guest";
+  if(!name) name = "Guest";
   localStorage.setItem("name", name);
 }
 
@@ -67,157 +70,157 @@ set(infoRef, {
   locked: false,
   unread: 0
 });
+onDisconnect(infoRef).update({ online: false, lastSeen: Date.now() });
 
-onDisconnect(infoRef).update({
-  online: false,
-  lastSeen: Date.now()
+/* ---------------- EMOJI PICKER ---------------- */
+const emojiList = ["😀","😁","😂","🤣","😊","😍","😎","😢","😡","👍","👎","❤️","🔥","🎉","🙏"];
+emojiList.forEach(e=>{
+  const span = document.createElement("span");
+  span.textContent = e;
+  span.style.fontSize = "24px";
+  span.style.margin = "4px";
+  span.style.cursor = "pointer";
+  span.onclick = ()=>{ input.value += e; emojiBox.style.display="none"; input.focus(); };
+  emojiBox.appendChild(span);
 });
+emojiBtn.onclick = ()=>{ emojiBox.style.display = emojiBox.style.display==="block" ? "none":"block"; };
 
-/* ---------------- USER MODE ---------------- */
-function startUser() {
-  onChildAdded(ref(db, `chats/${uid}/messages`), snap => {
-    render(snap.key, snap.val());
-    receiveSound.play();
-  });
+/* ---------------- RECORD AUDIO ---------------- */
+let mediaRecorder, audioChunks=[];
+recordBtn.onclick = async ()=>{
+  if(!mediaRecorder || mediaRecorder.state==="inactive"){
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks=[];
+    mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
+    mediaRecorder.onstop=async ()=>{
+      const blob = new Blob(audioChunks,{type:'audio/mp3'});
+      const file = new File([blob],`voice_${Date.now()}.mp3`,{type:'audio/mp3'});
+      const storageRef = firebase.storage().ref(`chatAudio/${uid}/${file.name}`);
+      const uploadTask = storageRef.put(file);
+      uploadTask.on('state_changed',null,err=>alert(err.message),async ()=>{
+        const url = await uploadTask.snapshot.ref.getDownloadURL();
+        push(ref(db, `chats/${uid}/messages`), {sender:isAdmin?"admin":"user", type:"audio", url, time:new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})});
+      });
+    };
+    mediaRecorder.start();
+    recordBtn.innerText="⏹️ Stop";
+  } else if(mediaRecorder.state==="recording"){
+    mediaRecorder.stop();
+    recordBtn.innerText="🎤";
+  }
+};
 
-  onValue(ref(db, `chats/${uid}/info/locked`), s => {
-    if (s.val()) {
-      input.disabled = true;
-      notice.innerText = "🔒 Chat is locked by admin";
-    } else {
-      input.disabled = false;
-      notice.innerText = "";
-    }
+/* ---------------- IMAGE UPLOAD ---------------- */
+attachBtn.onclick = ()=>fileInput.click();
+fileInput.onchange=async e=>{
+  const file=e.target.files[0];
+  if(!file) return;
+  const storageRef = firebase.storage().ref(`chatImages/${uid}/${Date.now()}_${file.name}`);
+  const uploadTask = storageRef.put(file);
+  uploadTask.on('state_changed', null, err=>alert(err.message), async ()=>{
+    const url = await uploadTask.snapshot.ref.getDownloadURL();
+    push(ref(db, `chats/${uid}/messages`), {sender:isAdmin?"admin":"user", type:"image", url, time:new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})});
   });
+};
+
+/* ---------------- SEND TEXT ---------------- */
+sendBtn.onclick = sendMessage;
+input.addEventListener("keypress", e=>{ if(e.key==="Enter") sendMessage(); });
+function sendMessage(){
+  const text=input.value.trim();
+  if(!text) return;
+  if(!isAdmin && text===ADMIN_CODE){ isAdmin=true; startAdmin(); input.value=""; return; }
+  const target=isAdmin?activeUser:uid;
+  if(!target) return alert("Select user");
+  push(ref(db, `chats/${target}/messages`), {sender:isAdmin?"admin":"user", type:"text", text, time:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})});
+  sendSound.play();
+  input.value="";
 }
 
 /* ---------------- ADMIN DASHBOARD ---------------- */
-function startAdmin() {
-  title.innerText = "👑 Admin Dashboard";
-  usersDiv.style.display = "block";
-  adminTools.style.display = "flex";
-
-  onChildAdded(ref(db, "chats"), snap => {
-    const u = snap.key;
-    const info = snap.val().info || {};
-    const div = document.createElement("div");
-    div.className = "user";
-    div.innerHTML = `
-      <b>${info.name || u}</b>
-      <small>Unread: ${info.unread || 0}</small>
-      <small>${info.online ? "🟢 Online" : "Last seen: " + new Date(info.lastSeen).toLocaleTimeString()}</small>
-    `;
-    div.onclick = () => loadUser(u);
+function startAdmin(){
+  document.getElementById("title").innerText="👑 Admin Dashboard";
+  usersDiv.style.display="block";
+  adminTools.style.display="flex";
+  onChildAdded(ref(db,"chats"),snap=>{
+    const u=snap.key; const info=snap.val().info||{};
+    const div=document.createElement("div");
+    div.className="user";
+    div.innerHTML=`<b>${info.name||u}</b><small>Unread: ${info.unread||0}</small><small>${info.online?"🟢 Online":"Last seen: "+new Date(info.lastSeen).toLocaleTimeString()}</small>`;
+    div.onclick=()=>loadUser(u);
     usersDiv.appendChild(div);
   });
 }
-
-function loadUser(u) {
-  activeUser = u;
-  messages.innerHTML = "";
-  update(ref(db, `chats/${u}/info`), { unread: 0 });
-
-  onChildAdded(ref(db, `chats/${u}/messages`), snap => {
+function loadUser(u){
+  activeUser=u; messages.innerHTML="";
+  update(ref(db, `chats/${u}/info`), {unread:0});
+  onChildAdded(ref(db, `chats/${u}/messages`), snap=>{
     render(snap.key, snap.val(), true);
     receiveSound.play();
   });
 }
 
-/* ---------------- SEND ---------------- */
-sendBtn.onclick = () => {
-  const text = input.value.trim();
-  if (!text) return;
-
-  if (!isAdmin && text === ADMIN_CODE) {
-    isAdmin = true;
-    startAdmin();
-    input.value = "";
-    return;
-  }
-
-  const target = isAdmin ? activeUser : uid;
-  if (!target) return alert("Select user");
-
-  push(ref(db, `chats/${target}/messages`), {
-    sender: isAdmin ? "admin" : "user",
-    text,
-    time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
-  });
-
-  if (!isAdmin) {
-    update(ref(db, `chats/${uid}/info`), { unread: (Math.random()*1000)|0 });
-  }
-
-  sendSound.play();
-  input.value = "";
-};
-
-/* ---------------- ADMIN ACTIONS ---------------- */
-document.getElementById("lockBtn").onclick = () => {
-  if (!activeUser) return alert("Select user");
-  update(ref(db, `chats/${activeUser}/info`), { locked: true });
-};
-
-document.getElementById("unlockBtn").onclick = () => {
-  if (!activeUser) return alert("Select user");
-  update(ref(db, `chats/${activeUser}/info`), { locked: false });
-};
-
-/* ---------------- RENDER ---------------- */
-function render(id, m, adminView=false) {
-  const d = document.createElement("div");
-  d.className = "msg " + m.sender;
-  d.innerHTML = `
-    <div class="bubble">
-      ${m.text}
-      <span>${m.time}</span>
-      ${adminView && m.sender==="admin" ? `
-        <button onclick="editMsg('${id}')">✏️</button>
-        <button onclick="delMsg('${id}')">🗑️</button>
-      ` : ""}
-    </div>
-  `;
+/* ---------------- CHAT RENDER ---------------- */
+function isOnlyEmoji(text){ return /^[\p{Extended_Pictographic}\s]+$/u.test(text.trim()); }
+function render(id,m,adminView=false){
+  const isBigEmoji = isOnlyEmoji(m.text||"") && m.type==="text";
+  const d=document.createElement("div");
+  d.className="msg "+m.sender+(isBigEmoji?" big-emoji":"");
+  let content="";
+  if(m.type==="text") content=m.text;
+  else if(m.type==="image") content=`<img src="${m.url}"/>`;
+  else if(m.type==="audio") content=`<audio controls src="${m.url}"></audio>`;
+  d.innerHTML=`<div class="bubble">${content}<span>${m.time}</span>${adminView && m.sender==="admin"?`<button onclick="editMsg('${id}')">✏️</button><button onclick="delMsg('${id}')">🗑️</button>`:""}</div>`;
   messages.appendChild(d);
-  messages.scrollTop = messages.scrollHeight;
+  messages.scrollTop=messages.scrollHeight;
 }
-
-window.delMsg = (id) => {
-  if (!activeUser) return;
-  if (!confirm("Delete message?")) return;
-  remove(ref(db, `chats/${activeUser}/messages/${id}`));
-};
-
-window.editMsg = (id) => {
-  const newText = prompt("Edit message");
-  if (!newText) return;
-  update(ref(db, `chats/${activeUser}/messages/${id}`), { text: newText });
-};
+window.delMsg=id=>{ if(!activeUser) return; if(!confirm("Delete message?")) return; remove(ref(db, `chats/${activeUser}/messages/${id}`)); };
+window.editMsg=id=>{ const newText=prompt("Edit message"); if(!newText) return; update(ref(db, `chats/${activeUser}/messages/${id}`),{text:newText}); };
 
 /* ---------------- INIT ---------------- */
 startUser();
+function startUser(){
+  onChildAdded(ref(db, `chats/${uid}/messages`), snap=>{ render(snap.key, snap.val()); receiveSound.play(); });
+  onValue(ref(db, `chats/${uid}/info/locked`), s=>{ if(s.val()){ input.disabled=true; notice.innerText="🔒 Chat locked by admin"; } else{ input.disabled=false; notice.innerText=""; } });
+}
+
+document.getElementById("lockBtn").onclick=()=>{ if(!activeUser) return alert("Select user"); update(ref(db, `chats/${activeUser}/info`),{locked:true}); };
+document.getElementById("unlockBtn").onclick=()=>{ if(!activeUser) return alert("Select user"); update(ref(db, `chats/${activeUser}/info`),{locked:false}); };
 </script>
 
 <style>
 body{margin:0;font-family:Poppins;background:#0f172a;color:#fff}
-.chat{display:flex;height:100vh}
-#users{width:240px;background:#020617;display:none;overflow:auto}
+.chat{display:flex;height:100vh;flex-direction:row}
+#users{width:220px;background:#020617;display:none;overflow-y:auto}
 .user{padding:10px;border-bottom:1px solid #1e293b;cursor:pointer}
 .user small{display:block;color:#94a3b8;font-size:11px}
 .main{flex:1;display:flex;flex-direction:column}
 .header{padding:14px;background:#d4af37;color:#000;font-weight:600}
-.admin-tools{display:none;gap:6px;padding:8px;background:#020617}
-.messages{flex:1;padding:12px;overflow:auto}
+.admin-tools{display:none;gap:6px;padding:8px;background:#020617;flex-wrap:wrap}
+.messages{flex:1;padding:12px;overflow-y:auto}
 .msg{margin-bottom:8px;display:flex}
 .user.msg{justify-content:flex-end}
 .admin.msg{justify-content:flex-start}
-.bubble{max-width:70%;padding:10px;border-radius:14px}
+.bubble{max-width:75%;padding:10px;border-radius:14px;word-wrap:break-word}
 .user .bubble{background:#2563eb}
 .admin .bubble{background:#f5d76e;color:#000}
-.bubble span{display:block;font-size:10px;opacity:.6}
-.input{display:flex;padding:10px;border-top:1px solid #1e293b}
+.bubble span{display:block;font-size:10px;opacity:.6;margin-top:4px}
 input{flex:1;padding:10px;border-radius:10px;border:none}
-button{padding:6px;border:none;border-radius:6px}
+.input-box{display:flex;padding:10px;border-top:1px solid #1e293b;gap:6px}
+button{padding:6px;border:none;border-radius:6px;cursor:pointer}
 #notice{font-size:12px;color:#f87171;padding-left:10px}
+img{max-width:200px;border-radius:12px;display:block;margin-bottom:4px}
+audio{max-width:200px;border-radius:8px;margin-bottom:4px}
+.big-emoji .bubble{background:transparent !important;box-shadow:none;text-align:center;font-size:52px;line-height:1.2}
+#emojiBox{display:none;position:absolute;bottom:70px;background:#020617;padding:10px;border-radius:12px;max-width:260px;line-height:32px;font-size:22px;cursor:pointer;flex-wrap:wrap;display:flex;flex-wrap:wrap}
+#emojiBtn{background:#020617;color:#fff;font-size:20px}
+@media(max-width:600px){
+  .chat{flex-direction:column}
+  #users{width:100%;height:150px;overflow-x:auto;display:flex}
+  .main{flex:1}
+  .admin-tools{flex-wrap:wrap}
+}
 </style>
 </head>
 
@@ -235,9 +238,14 @@ button{padding:6px;border:none;border-radius:6px}
     <div class="messages" id="messages"></div>
     <div id="notice"></div>
 
-    <div class="input">
+    <div class="input-box">
+      <button id="emojiBtn">😊</button>
+      <button id="attachBtn">📷</button>
+      <button id="recordBtn">🎤</button>
       <input id="input" placeholder="Type message">
-      <button id="send">Send</button>
+      <button id="send">➤</button>
+      <div id="emojiBox"></div>
+      <input type="file" id="fileInput" style="display:none" accept="image/*">
     </div>
   </div>
 </div>
