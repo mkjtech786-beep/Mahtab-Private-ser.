@@ -6,7 +6,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, set, get } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 /* ------------------- FIREBASE ------------------- */
 const firebaseConfig = {
@@ -24,6 +24,8 @@ const db = getDatabase(app);
 
 /* ------------------- USER / ADMIN ------------------- */
 let userId = localStorage.getItem("support_uid");
+let userName = localStorage.getItem("support_name");
+
 if (!userId) {
   userId = "user_" + Math.random().toString(36).substr(2, 8);
   localStorage.setItem("support_uid", userId);
@@ -49,6 +51,18 @@ document.querySelector(".chat").insertBefore(userListDiv, messages);
 /* ------------------- TIME ------------------- */
 const timeNow = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+/* ------------------- PROMPT USER NAME ------------------- */
+async function askUserName() {
+  if (!userName) {
+    userName = prompt("Enter your name:");
+    if (!userName) userName = "Anonymous";
+    localStorage.setItem("support_name", userName);
+
+    // Save name in Firebase
+    await set(ref(db, "supportChats/" + userId + "/info"), { name: userName });
+  }
+}
+
 /* ------------------- USER LISTENER ------------------- */
 function startUserMode() {
   const myRef = ref(db, "supportChats/" + userId + "/messages");
@@ -70,22 +84,27 @@ function startAdminMode() {
   title.innerText = "👑 Admin Panel";
 
   const allRef = ref(db, "supportChats");
-  onChildAdded(allRef, userSnap => {
+  onChildAdded(allRef, async userSnap => {
     const uid = userSnap.key;
+
+    // Get user name from info
+    const infoSnap = await get(ref(db, `supportChats/${uid}/info`));
+    const name = infoSnap.exists() ? infoSnap.val().name : uid;
 
     // Create user button
     const userBtn = document.createElement("button");
-    userBtn.innerText = uid;
+    userBtn.innerText = name;
     userBtn.style.cssText = "width:100%;margin-bottom:4px;padding:6px;border:none;border-radius:6px;background:#0b0b0f;color:#fff;cursor:pointer;text-align:left;";
-    userBtn.onclick = () => loadUserChat(uid);
+    userBtn.onclick = () => loadUserChat(uid, name);
     userListDiv.appendChild(userBtn);
   });
 }
 
 /* ------------------- LOAD SPECIFIC USER CHAT ------------------- */
-function loadUserChat(uid) {
+function loadUserChat(uid, name) {
   selectedUser = uid;
-  messages.innerHTML = ""; // clear previous chat
+  messages.innerHTML = "";
+  title.innerText = `Chat with ${name}`;
 
   const chatRef = ref(db, "supportChats/" + uid + "/messages");
   onChildAdded(chatRef, snap => {
@@ -133,6 +152,7 @@ function sendMsg() {
 }
 
 /* ------------------- INIT ------------------- */
+await askUserName();
 startUserMode();
 sendBtn.onclick = sendMsg;
 input.addEventListener("keypress", e => e.key === "Enter" && sendMsg());
@@ -144,7 +164,7 @@ body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:
 .header{padding:14px;background:#161616}
 .header-title{color:#d4af37;font-weight:bold}
 .admin-bar{display:none;background:#d4af37;color:#000;text-align:center;font-size:12px;padding:6px}
-.messages{flex:1;padding:12px;overflow-y:auto;margin-left:120px} /* leave space for user list */
+.messages{flex:1;padding:12px;overflow-y:auto;margin-left:120px}
 .msg{max-width:78%;padding:10px;margin-bottom:8px;border-radius:12px}
 .user{background:#1f2a33;color:#fff;margin-left:auto}
 .admin{background:#d4af37;color:#000;margin-right:auto}
