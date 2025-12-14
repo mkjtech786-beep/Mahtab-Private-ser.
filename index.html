@@ -2,49 +2,50 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Telegram Chat V3 Admin</title>
+<title>Telegram Chat V4 PRO</title>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+
+  // ✅ Firebase Config (from user)
+  const firebaseConfig = {
+    apiKey: "AIzaSyDnkwQk4Y11adyGkiCog4H8xi_ZjCgHUaE",
+    authDomain: "clubpkr-87519.firebaseapp.com",
+    databaseURL: "https://clubpkr-87519-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "clubpkr-87519",
+    storageBucket: "clubpkr-87519.firebasestorage.app",
+    messagingSenderId: "323435934947",
+    appId: "1:323435934947:web:10abb03f4be9d8f2e281d6",
+    measurementId: "G-ZR9F5KJWDW"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  window.db = getDatabase(app);
+</script>
 
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;background:#0b0b0f;font-family:Arial;
-  display:flex;justify-content:center;align-items:center;height:100vh
-}
-.chat{
-  width:380px;height:660px;background:#121212;border-radius:18px;
-  display:flex;flex-direction:column;overflow:hidden;
-  box-shadow:0 0 40px rgba(212,175,55,.3)
-}
+body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh}
+.chat{width:380px;height:660px;background:#121212;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 40px rgba(212,175,55,.3)}
 .header{padding:14px;background:#161616;border-bottom:1px solid #2a2a2a}
 .header-title{color:#d4af37;font-weight:bold}
 .header-status{font-size:12px;color:#8f8f8f}
-.admin-bar{
-  display:none;background:#d4af37;color:#000;
-  text-align:center;font-size:12px;padding:6px;font-weight:bold
-}
+.admin-bar{display:none;background:#d4af37;color:#000;text-align:center;font-size:12px;padding:6px;font-weight:bold}
 .messages{flex:1;padding:12px;overflow-y:auto;background:#0f0f0f}
-.msg{
-  max-width:78%;padding:10px 12px;margin-bottom:10px;
-  border-radius:14px;font-size:14px;animation:fade .2s ease
-}
+.msg{max-width:78%;padding:10px 12px;margin-bottom:10px;border-radius:14px;font-size:14px;line-height:1.4;animation:fade .25s ease}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
 .user{background:#1f2a33;color:#fff;margin-left:auto}
-.support{background:#1a1a1a;color:#d4af37}
-.admin{background:#d4af37;color:#000}
+.support{background:#1a1a1a;color:#d4af37;margin-right:auto}
+.admin{background:#d4af37;color:#000;margin-right:auto}
 .meta{font-size:10px;opacity:.6;margin-top:4px}
 .user .meta{text-align:right}
+.support .meta,.admin .meta{text-align:left}
 .typing{display:none;font-size:12px;color:#888;padding:4px 12px}
-.input-box{
-  display:flex;padding:10px;background:#161616;border-top:1px solid #2a2a2a
-}
-.input-box input{
-  flex:1;padding:11px;border:none;border-radius:12px;
-  background:#0f0f0f;color:#fff;outline:none
-}
-.input-box button{
-  margin-left:8px;padding:11px 16px;border:none;border-radius:12px;
-  background:#d4af37;color:#000;font-weight:bold;cursor:pointer
-}
+.input-box{display:flex;padding:10px;background:#161616;border-top:1px solid #2a2a2a}
+.input-box input{flex:1;padding:11px;border:none;border-radius:12px;background:#0f0f0f;color:#fff;outline:none}
+.input-box button{margin-left:8px;padding:11px 16px;border:none;border-radius:12px;background:#d4af37;color:#000;font-weight:bold;cursor:pointer}
 </style>
 </head>
 
@@ -53,10 +54,10 @@ body{
 <div class="chat">
   <div class="header">
     <div class="header-title" id="title">Telegram Help</div>
-    <div class="header-status">online</div>
+    <div class="header-status" id="status">online • 0 users</div>
   </div>
 
-  <div class="admin-bar" id="adminBar">ADMIN MODE</div>
+  <div class="admin-bar" id="adminBar">👑 ADMIN MODE ENABLED</div>
 
   <div class="messages" id="messages"></div>
 
@@ -68,33 +69,53 @@ body{
   </div>
 </div>
 
-<script>
-const ADMIN_CODE="mahtab666777";
-let isAdmin=false;
+<script type="module">
+import { ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 const messages=document.getElementById("messages");
 const input=document.getElementById("input");
+const typing=document.getElementById("typing");
 const adminBar=document.getElementById("adminBar");
 const title=document.getElementById("title");
+const status=document.getElementById("status");
 
-/* time */
+const ADMIN_CODE="mahtab666777";
+let isAdmin=false;
+let typingTimer;
+let userId = "user_" + Math.floor(Math.random()*100000);
+
+/* helpers */
 function timeNow(){
   const d=new Date();
-  return d.getHours().toString().padStart(2,"0")+":"+
-         d.getMinutes().toString().padStart(2,"0");
+  return d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");
 }
 
-/* save/load */
-function saveChat(){
-  localStorage.setItem("chatData",messages.innerHTML);
-}
-function loadChat(){
-  const data=localStorage.getItem("chatData");
-  if(data) messages.innerHTML=data;
-}
-loadChat();
+/* Firebase ref */
+const messagesRef = ref(window.db, 'messages');
 
-/* send */
+/* Load messages in real-time */
+onChildAdded(messagesRef, (data)=>{
+  const msg = data.val();
+  const div = document.createElement("div");
+  div.className = msg.sender===userId ? "msg user" : (msg.sender==="admin" ? "msg admin" : "msg support");
+  div.innerHTML = msg.text + `<div class="meta">${msg.time}</div>`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+});
+
+/* fake online count */
+setInterval(()=>{
+  status.innerText = `online • ${5+Math.floor(Math.random()*5)} users`;
+},4000);
+
+/* typing indicator */
+input.addEventListener("input", ()=>{
+  typing.style.display="block";
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(()=> typing.style.display="none", 700);
+});
+
+/* send message */
 function sendMsg(){
   const text=input.value.trim();
   if(!text) return;
@@ -103,30 +124,20 @@ function sendMsg(){
   if(text===ADMIN_CODE){
     isAdmin=true;
     adminBar.style.display="block";
-    title.innerText="Admin Panel";
+    title.innerText="👑 Admin Panel";
     input.value="";
     return;
   }
 
-  const div=document.createElement("div");
-  div.className="msg "+(isAdmin?"admin":"user");
-  div.innerHTML=text+`<div class="meta">${timeNow()}</div>`;
-  messages.appendChild(div);
-  input.value="";
-  messages.scrollTop=messages.scrollHeight;
-  saveChat();
+  const msgObj = {
+    sender: isAdmin?"admin":userId,
+    text: text,
+    time: timeNow()
+  };
+  push(messagesRef, msgObj);
 
-  /* auto reply ONLY for user */
-  if(!isAdmin){
-    setTimeout(()=>{
-      const r=document.createElement("div");
-      r.className="msg support";
-      r.innerHTML="Support will reply soon."+`<div class="meta">${timeNow()}</div>`;
-      messages.appendChild(r);
-      messages.scrollTop=messages.scrollHeight;
-      saveChat();
-    },800);
-  }
+  input.value="";
+  typing.style.display="none";
 }
 </script>
 
