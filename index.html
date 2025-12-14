@@ -2,11 +2,11 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Telegram Chat V4 PRO</title>
+<title>Telegram Chat V4 PRO Admin</title>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-  import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+  import { getDatabase, ref, push, onChildAdded, remove } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
   // ✅ Firebase config
   const firebaseConfig = {
@@ -26,13 +26,16 @@
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh}
-.chat{width:380px;height:660px;background:#121212;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 40px rgba(212,175,55,.3)}
+.chat{width:420px;height:720px;background:#121212;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 40px rgba(212,175,55,.3)}
 .header{padding:14px;background:#161616;border-bottom:1px solid #2a2a2a}
-.header-title{color:#d4af37;font-weight:bold}
+.header-title{color:#d4af37;font-weight:bold;display:flex;justify-content:space-between;align-items:center}
 .header-status{font-size:12px;color:#8f8f8f}
 .admin-bar{display:none;background:#d4af37;color:#000;text-align:center;font-size:12px;padding:6px;font-weight:bold}
+.users-list{background:#1a1a1a;color:#fff;padding:8px;overflow-y:auto;height:80px}
+.user-item{padding:6px;cursor:pointer;border-bottom:1px solid #2a2a2a}
+.user-item:hover{background:#2a2a2a}
 .messages{flex:1;padding:12px;overflow-y:auto;background:#0f0f0f}
-.msg{max-width:78%;padding:10px 12px;margin-bottom:10px;border-radius:14px;font-size:14px;line-height:1.4;animation:fade .25s ease}
+.msg{max-width:78%;padding:10px 12px;margin-bottom:10px;border-radius:14px;font-size:14px;line-height:1.4;animation:fade .25s ease;position:relative}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
 .user{background:#1f2a33;color:#fff;margin-left:auto}
 .support{background:#1a1a1a;color:#d4af37;margin-right:auto}
@@ -40,6 +43,7 @@ body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:
 .meta{font-size:10px;opacity:.6;margin-top:4px}
 .user .meta{text-align:right}
 .support .meta,.admin .meta{text-align:left}
+.delete-btn{position:absolute;top:2px;right:4px;font-size:10px;color:#f00;cursor:pointer}
 .typing{display:none;font-size:12px;color:#888;padding:4px 12px}
 .input-box{display:flex;padding:10px;background:#161616;border-top:1px solid #2a2a2a}
 .input-box input{flex:1;padding:11px;border:none;border-radius:12px;background:#0f0f0f;color:#fff;outline:none}
@@ -57,8 +61,8 @@ body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:
 
   <div class="admin-bar" id="adminBar">👑 ADMIN MODE ENABLED</div>
 
+  <div class="users-list" id="usersList"></div>
   <div class="messages" id="messages"></div>
-
   <div class="typing" id="typing">typing…</div>
 
   <div class="input-box">
@@ -68,7 +72,7 @@ body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:
 </div>
 
 <script type="module">
-import { ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import { ref, push, onChildAdded, remove } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
@@ -77,16 +81,18 @@ const adminBar = document.getElementById("adminBar");
 const title = document.getElementById("title");
 const status = document.getElementById("status");
 const sendBtn = document.getElementById("sendBtn");
+const usersList = document.getElementById("usersList");
 
 const ADMIN_CODE = "mahtab666777";
 let isAdmin = false;
 let typingTimer;
 let userId = "user_" + Math.floor(Math.random() * 100000);
+let selectedUser = null;
 
 /* helpers */
 function timeNow() {
   const d = new Date();
-  return d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
+  return d.getHours().toString().padStart(2,"0") + ":" + d.getMinutes().toString().padStart(2,"0");
 }
 
 /* Firebase ref */
@@ -95,60 +101,77 @@ const messagesRef = ref(window.db, 'messages');
 /* Load messages in real-time */
 onChildAdded(messagesRef, (data) => {
   const msg = data.val();
+  if(isAdmin && selectedUser && msg.sender !== selectedUser) return; // admin sees only selected user
   const div = document.createElement("div");
   div.className = msg.sender === userId ? "msg user" : (msg.sender === "admin" ? "msg admin" : "msg support");
   div.innerHTML = msg.text + `<div class="meta">${msg.time}</div>`;
+  if(isAdmin){
+    const del = document.createElement("span");
+    del.className="delete-btn";
+    del.innerText="×";
+    del.onclick = ()=> remove(ref(window.db,'messages/'+data.key));
+    div.appendChild(del);
+  }
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
 });
 
 /* fake online count */
-setInterval(() => {
-  status.innerText = `online • ${5 + Math.floor(Math.random() * 5)} users`;
-}, 4000);
+setInterval(()=>{
+  status.innerText = `online • ${5 + Math.floor(Math.random()*5)} users`;
+},4000);
 
 /* typing indicator */
-input.addEventListener("input", () => {
-  typing.style.display = "block";
+input.addEventListener("input", ()=>{
+  typing.style.display="block";
   clearTimeout(typingTimer);
-  typingTimer = setTimeout(() => typing.style.display = "none", 700);
+  typingTimer = setTimeout(()=> typing.style.display="none", 700);
 });
 
 /* send message function */
-function sendMsg() {
+function sendMsg(){
   const text = input.value.trim();
-  if (!text) return;
+  if(!text) return;
 
   /* admin login */
-  if (text === ADMIN_CODE) {
-    isAdmin = true;
-    adminBar.style.display = "block";
-    title.innerText = "👑 Admin Panel";
-    input.value = "";
+  if(text===ADMIN_CODE){
+    isAdmin=true;
+    adminBar.style.display="block";
+    title.innerText="👑 Admin Panel";
+    input.value="";
     return;
   }
 
   const msgObj = {
-    sender: isAdmin ? "admin" : userId,
+    sender: isAdmin ? (selectedUser?"admin":"admin"):userId,
     text: text,
     time: timeNow()
   };
 
   push(messagesRef, msgObj)
-    .then(() => console.log("Message sent"))
-    .catch(e => console.error("Firebase push error:", e));
+    .then(()=>console.log("Message sent"))
+    .catch(e=>console.error("Firebase push error:", e));
 
-  input.value = "";
-  typing.style.display = "none";
+  input.value="";
+  typing.style.display="none";
 }
 
 /* bind send button */
 sendBtn.addEventListener("click", sendMsg);
 
 /* bind Enter key */
-input.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") sendMsg();
-});
+input.addEventListener("keypress",(e)=>{if(e.key==="Enter") sendMsg();});
+
+/* populate fake users for admin demo */
+if(isAdmin){
+  for(let i=1;i<=5;i++){
+    const u = document.createElement("div");
+    u.className="user-item";
+    u.innerText="user_"+i;
+    u.onclick=()=>{selectedUser="user_"+i; messages.innerHTML="";}
+    usersList.appendChild(u);
+  }
+}
 </script>
 
 </body>
