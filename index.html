@@ -1,15 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Support Chat</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support Chat – Admin Dashboard</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, set, get } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import {
+  getDatabase, ref, push, onChildAdded, set,
+  onValue, onDisconnect, remove, update
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 /* ---------------- FIREBASE ---------------- */
 const firebaseConfig = {
@@ -25,294 +28,179 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* ---------------- USER / ADMIN ---------------- */
-let userId = localStorage.getItem("support_uid");
-let userName = localStorage.getItem("support_name");
-
-if (!userId) {
-  userId = "user_" + Math.random().toString(36).substr(2, 8);
-  localStorage.setItem("support_uid", userId);
-}
+/* ---------------- STATE ---------------- */
+let uid = localStorage.getItem("uid") || "user_" + Math.random().toString(36).slice(2,8);
+let name = localStorage.getItem("name");
+localStorage.setItem("uid", uid);
 
 const ADMIN_CODE = "mahtab666777";
 let isAdmin = false;
-let selectedUser = null;
+let activeUser = null;
 
 /* ---------------- DOM ---------------- */
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
-const sendBtn = document.getElementById("sendBtn");
-const adminBar = document.getElementById("adminBar");
+const sendBtn = document.getElementById("send");
 const title = document.getElementById("title");
-const nameModal = document.getElementById("nameModal");
-const nameInput = document.getElementById("nameInput");
-const saveNameBtn = document.getElementById("saveNameBtn");
+const usersDiv = document.getElementById("users");
+const typingDiv = document.getElementById("typing");
+const adminTools = document.getElementById("adminTools");
 
-/* ---------------- USER LIST (ADMIN) ---------------- */
-const userListDiv = document.createElement("div");
-userListDiv.className = "sidebar";
-userListDiv.style.display = "none";
-document.querySelector(".chat").insertBefore(userListDiv, messages);
-
-/* ---------------- TIME ---------------- */
-const timeNow = () =>
-  new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-/* ---------------- NAME MODAL ---------------- */
-async function initUser() {
-  if (!userName) {
-    nameModal.style.display = "flex";
-  } else {
-    await set(ref(db, `supportChats/${userId}/info`), { name: userName });
-    startUserMode();
-  }
+/* ---------------- NAME ---------------- */
+if (!name) {
+  name = prompt("Enter your name");
+  if (!name) name = "Guest";
+  localStorage.setItem("name", name);
 }
 
-saveNameBtn.onclick = async () => {
-  const name = nameInput.value.trim();
-  if (!name) return alert("Name required");
-  userName = name;
-  localStorage.setItem("support_name", userName);
-  await set(ref(db, `supportChats/${userId}/info`), { name: userName });
-  nameModal.style.display = "none";
-  startUserMode();
-};
+/* ---------------- USER INFO ---------------- */
+set(ref(db, `chats/${uid}/info`), {
+  name,
+  online: true,
+  blocked: false
+});
+onDisconnect(ref(db, `chats/${uid}/info/online`)).set(false);
 
 /* ---------------- USER MODE ---------------- */
-function startUserMode() {
-  const chatRef = ref(db, `supportChats/${userId}/messages`);
-  onChildAdded(chatRef, snap => renderMessage(snap.val()));
-}
-
-/* ---------------- ADMIN MODE ---------------- */
-function startAdminMode() {
-  adminBar.style.display = "block";
-  userListDiv.style.display = "block";
-  messages.innerHTML = "";
-  title.innerText = "👑 Admin Panel";
-
-  const allRef = ref(db, "supportChats");
-  onChildAdded(allRef, async snap => {
-    const uid = snap.key;
-    const info = await get(ref(db, `supportChats/${uid}/info`));
-    const name = info.exists() ? info.val().name : uid;
-
-    const item = document.createElement("div");
-    item.className = "user-item";
-    item.innerHTML = `<div class="avatar">${name[0]}</div><span>${name}</span>`;
-    item.onclick = () => loadUser(uid, name);
-    userListDiv.appendChild(item);
+function startUser() {
+  onChildAdded(ref(db, `chats/${uid}/messages`), s => render(s.val()));
+  onValue(ref(db, `chats/${uid}/info/blocked`), s => {
+    if (s.val()) {
+      input.disabled = true;
+      typingDiv.innerText = "🚫 You are blocked by admin";
+    } else {
+      input.disabled = false;
+      typingDiv.innerText = "";
+    }
   });
 }
 
-function loadUser(uid, name) {
-  selectedUser = uid;
-  messages.innerHTML = "";
-  title.innerText = "Chat with " + name;
+/* ---------------- ADMIN DASHBOARD ---------------- */
+function startAdmin() {
+  title.innerText = "👑 Admin Dashboard";
+  usersDiv.style.display = "block";
+  adminTools.style.display = "flex";
 
-  const chatRef = ref(db, `supportChats/${uid}/messages`);
-  onChildAdded(chatRef, snap => renderMessage(snap.val()));
+  onChildAdded(ref(db, "chats"), snap => {
+    const u = snap.key;
+    const info = snap.val().info || {};
+    const btn = document.createElement("div");
+    btn.className = "user";
+    btn.innerHTML = `
+      <span>${info.name || u}</span>
+      <small>${info.online ? "🟢 online" : "⚫ offline"}</small>
+    `;
+    btn.onclick = () => loadUser(u);
+    usersDiv.appendChild(btn);
+  });
 }
 
-/* ---------------- MESSAGE RENDER ---------------- */
-function renderMessage(m) {
-  const div = document.createElement("div");
-  div.className = "msg " + m.sender;
-  div.innerHTML = `<div class="bubble">${m.text}<span>${m.time}</span></div>`;
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
+/* ---------------- LOAD USER CHAT ---------------- */
+function loadUser(u) {
+  activeUser = u;
+  messages.innerHTML = "";
+  onChildAdded(ref(db, `chats/${u}/messages`), s => render(s.val()));
 }
 
 /* ---------------- SEND MESSAGE ---------------- */
-function sendMsg() {
-  const text = input.value.trim();
-  if (!text) return;
+sendBtn.onclick = () => {
+  const txt = input.value.trim();
+  if (!txt) return;
 
-  if (!isAdmin && text === ADMIN_CODE) {
+  if (!isAdmin && txt === ADMIN_CODE) {
     isAdmin = true;
-    input.value = "";
-    startAdminMode();
-    return;
-  }
-
-  if (isAdmin) {
-    if (!selectedUser) return alert("Select user");
-    push(ref(db, `supportChats/${selectedUser}/messages`), {
-      sender: "admin",
-      text,
-      time: timeNow()
-    });
+    startAdmin();
     input.value = "";
     return;
   }
 
-  push(ref(db, `supportChats/${userId}/messages`), {
-    sender: "user",
-    text,
-    time: timeNow()
+  const target = isAdmin ? activeUser : uid;
+  if (!target) return alert("Select user");
+
+  push(ref(db, `chats/${target}/messages`), {
+    sender: isAdmin ? "admin" : "user",
+    text: txt,
+    time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
   });
   input.value = "";
+};
+
+/* ---------------- ADMIN ACTIONS ---------------- */
+document.getElementById("blockBtn").onclick = () => {
+  if (!activeUser) return alert("Select user");
+  update(ref(db, `chats/${activeUser}/info`), { blocked: true });
+};
+
+document.getElementById("unblockBtn").onclick = () => {
+  if (!activeUser) return alert("Select user");
+  update(ref(db, `chats/${activeUser}/info`), { blocked: false });
+};
+
+document.getElementById("deleteBtn").onclick = () => {
+  if (!activeUser) return alert("Select user");
+  if (!confirm("⚠️ Delete full chat?")) return;
+  remove(ref(db, `chats/${activeUser}/messages`));
+  messages.innerHTML = "";
+};
+
+/* ---------------- RENDER ---------------- */
+function render(m) {
+  const d = document.createElement("div");
+  d.className = "msg " + m.sender;
+  d.innerHTML = `<div class="bubble">${m.text}<span>${m.time}</span></div>`;
+  messages.appendChild(d);
+  messages.scrollTop = messages.scrollHeight;
 }
 
-sendBtn.onclick = sendMsg;
-input.addEventListener("keypress", e => e.key === "Enter" && sendMsg());
-
-initUser();
+/* ---------------- INIT ---------------- */
+startUser();
 </script>
 
 <style>
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Poppins,sans-serif;
-  background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-  height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center
-}
-.chat{
-  width:720px;
-  height:680px;
-  background:#020617;
-  border-radius:22px;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-  box-shadow:0 25px 60px rgba(0,0,0,.6)
-}
-.header{
-  padding:16px;
-  background:linear-gradient(90deg,#d4af37,#f5d76e);
-  font-weight:600
-}
-.admin-bar{
-  display:none;
-  text-align:center;
-  background:#111;
-  color:#f5d76e;
-  font-size:12px;
-  padding:6px
-}
-.sidebar{
-  width:180px;
-  background:#020617;
-  padding:10px;
-  overflow-y:auto
-}
-.user-item{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  padding:8px;
-  border-radius:10px;
-  cursor:pointer
-}
-.user-item:hover{background:#1e293b}
-.avatar{
-  width:34px;height:34px;
-  border-radius:50%;
-  background:#d4af37;
-  color:#000;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:600
-}
-.messages{
-  flex:1;
-  padding:14px;
-  overflow-y:auto
-}
-.msg{display:flex;margin-bottom:10px}
-.msg.user{justify-content:flex-end}
-.msg.admin{justify-content:flex-start}
-.bubble{
-  max-width:70%;
-  padding:12px 14px;
-  border-radius:16px;
-  font-size:14px
-}
-.user .bubble{
-  background:#2563eb;
-  color:#fff;
-  border-bottom-right-radius:4px
-}
-.admin .bubble{
-  background:#f5d76e;
-  color:#000;
-  border-bottom-left-radius:4px
-}
-.bubble span{
-  display:block;
-  font-size:10px;
-  opacity:.6;
-  margin-top:4px
-}
-.input-box{
-  display:flex;
-  padding:12px;
-  border-top:1px solid #1e293b
-}
-input{
-  flex:1;
-  padding:12px;
-  border:none;
-  border-radius:14px;
-  background:#020617;
-  color:#fff;
-  outline:none
-}
-button{
-  margin-left:8px;
-  padding:12px 18px;
-  border:none;
-  border-radius:14px;
-  background:#d4af37;
-  font-weight:600;
-  cursor:pointer
-}
-
-/* NAME MODAL */
-.modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.7);
-  display:none;
-  align-items:center;
-  justify-content:center
-}
-.modal-box{
-  background:#020617;
-  padding:26px;
-  border-radius:20px;
-  width:300px;
-  text-align:center
-}
-.modal-box h3{color:#f5d76e}
+body{margin:0;font-family:Poppins;background:#0f172a;color:#fff}
+.chat{display:flex;height:100vh}
+#users{width:220px;background:#020617;display:none;overflow:auto}
+.user{padding:12px;border-bottom:1px solid #1e293b;cursor:pointer}
+.user small{display:block;color:#94a3b8;font-size:11px}
+.main{flex:1;display:flex;flex-direction:column}
+.header{padding:14px;background:#d4af37;color:#000;font-weight:600}
+.admin-tools{display:none;gap:6px;padding:8px;background:#020617}
+.admin-tools button{background:#334155;color:#fff}
+.messages{flex:1;padding:12px;overflow:auto}
+.msg{margin-bottom:8px;display:flex}
+.user.msg{justify-content:flex-end}
+.admin.msg{justify-content:flex-start}
+.bubble{max-width:70%;padding:10px;border-radius:14px}
+.user .bubble{background:#2563eb}
+.admin .bubble{background:#f5d76e;color:#000}
+.bubble span{display:block;font-size:10px;opacity:.6}
+.input{display:flex;padding:10px;border-top:1px solid #1e293b}
+input{flex:1;padding:10px;border-radius:10px;border:none}
+button{padding:8px 12px;border:none;border-radius:8px;cursor:pointer}
+#typing{font-size:12px;color:#94a3b8;padding-left:10px}
 </style>
 </head>
 
 <body>
-
-<div class="modal" id="nameModal">
-  <div class="modal-box">
-    <h3>Welcome 👋</h3>
-    <p style="color:#94a3b8;font-size:13px">Enter your name</p>
-    <input id="nameInput" placeholder="Your name">
-    <button id="saveNameBtn">Start Chat</button>
-  </div>
-</div>
-
 <div class="chat">
-  <div class="header"><span id="title">Support Chat</span></div>
-  <div class="admin-bar" id="adminBar">ADMIN MODE</div>
-  <div class="messages" id="messages"></div>
-  <div class="input-box">
-    <input id="input" placeholder="Type message...">
-    <button id="sendBtn">Send</button>
+  <div id="users"></div>
+  <div class="main">
+    <div class="header" id="title">Support Chat</div>
+
+    <div class="admin-tools" id="adminTools">
+      <button id="blockBtn">🚫 Block</button>
+      <button id="unblockBtn">✅ Unblock</button>
+      <button id="deleteBtn">🗑️ Delete Chat</button>
+    </div>
+
+    <div class="messages" id="messages"></div>
+    <div id="typing"></div>
+
+    <div class="input">
+      <input id="input" placeholder="Type message">
+      <button id="send">Send</button>
+    </div>
   </div>
 </div>
-
 </body>
 </html>
