@@ -1,145 +1,141 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>MAHTAB HACK V19</title>
+<title>Chat Help Support</title>
 
 <style>
 body{
-  background:#0b0b0b;
-  font-family:Arial;
-  color:#fff;
+  margin:0;
+  background:#0f0f0f;
+  font-family:Arial, sans-serif;
   display:flex;
   justify-content:center;
+  align-items:center;
+  height:100vh;
 }
-.app{
+
+.chat-box{
   width:360px;
+  height:600px;
+  background:#111;
+  border-radius:16px;
+  display:flex;
+  flex-direction:column;
+  box-shadow:0 0 20px rgba(0,0,0,0.6);
+}
+
+/* HEADER */
+.chat-header{
+  background:#1f1f1f;
+  padding:15px;
   text-align:center;
+  font-size:18px;
+  font-weight:bold;
+  color:#00ff99;
+  border-radius:16px 16px 0 0;
 }
-#timer{
-  font-size:40px;
-  margin:15px 0;
+
+/* MESSAGES */
+.chat-messages{
+  flex:1;
+  padding:15px;
+  overflow-y:auto;
 }
-.box{
-  padding:30px;
-  font-size:32px;
-  border-radius:15px;
-  margin:15px 0;
-  animation:pulse 1s infinite;
+
+.msg{
+  max-width:75%;
+  padding:10px 14px;
+  margin-bottom:10px;
+  border-radius:14px;
+  font-size:14px;
+  line-height:1.4;
 }
-.red{background:#ff3b3b;}
-.green{background:#2ecc71;}
-.violet{background:#9b59b6;}
-@keyframes pulse{
-  0%{transform:scale(1);}
-  50%{transform:scale(1.05);}
-  100%{transform:scale(1);}
+
+.user{
+  background:#2ecc71;
+  color:#000;
+  margin-left:auto;
+  border-bottom-right-radius:4px;
 }
-ul{list-style:none;padding:0;}
-li{
-  padding:8px;
-  margin:5px 0;
+
+.support{
+  background:#2b2b2b;
+  color:#fff;
+  margin-right:auto;
+  border-bottom-left-radius:4px;
+}
+
+/* INPUT */
+.chat-input{
+  display:flex;
+  padding:10px;
+  background:#1a1a1a;
+  border-radius:0 0 16px 16px;
+}
+
+.chat-input input{
+  flex:1;
+  padding:10px;
+  border:none;
   border-radius:10px;
+  outline:none;
+  font-size:14px;
+}
+
+.chat-input button{
+  margin-left:8px;
+  padding:10px 15px;
+  border:none;
+  border-radius:10px;
+  background:#00ff99;
+  font-weight:bold;
+  cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="app">
-  <h2>MAHTAB HACK V19</h2>
+<div class="chat-box">
+  <div class="chat-header">💬 CHAT HELP SUPPORT</div>
 
-  <div id="timer">03:00</div>
-
-  <div id="prediction" class="box green">
-    NEXT COLOR
+  <div class="chat-messages" id="messages">
+    <div class="msg support">Hello 👋<br>How can we help you?</div>
   </div>
 
-  <h3>Last Results</h3>
-  <ul id="history"></ul>
+  <div class="chat-input">
+    <input type="text" id="input" placeholder="Type your message...">
+    <button onclick="sendMsg()">Send</button>
+  </div>
 </div>
 
-<audio id="sound" src="https://assets.mixkit.co/active_storage/sfx/2577/2577-preview.mp3"></audio>
+<script>
+const messages = document.getElementById("messages");
+const input = document.getElementById("input");
 
-<!-- 🔥 FIREBASE + LOGIC -->
-<script type="module">
+function sendMsg(){
+  if(input.value.trim()==="") return;
 
-/* ✅ FIREBASE CDN (WEB READY) */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+  // user message
+  const userMsg = document.createElement("div");
+  userMsg.className = "msg user";
+  userMsg.innerText = input.value;
+  messages.appendChild(userMsg);
 
-/* ✅ YOUR FIREBASE CONFIG (CONNECTED) */
-const firebaseConfig = {
-  apiKey: "AIzaSyDnkwQk4Y11adyGkiCog4H8xi_ZjCgHUaE",
-  authDomain: "clubpkr-87519.firebaseapp.com",
-  databaseURL: "https://clubpkr-87519-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "clubpkr-87519",
-  storageBucket: "clubpkr-87519.firebasestorage.app",
-  messagingSenderId: "323435934947",
-  appId: "1:323435934947:web:97568617db4f891ce281d6"
-};
+  input.value = "";
+  messages.scrollTop = messages.scrollHeight;
 
-/* INIT */
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-/* ELEMENTS */
-const historyEl = document.getElementById("history");
-const predBox = document.getElementById("prediction");
-const sound = document.getElementById("sound");
-const timerEl = document.getElementById("timer");
-
-/* 🔥 LIVE DATA FROM FIREBASE */
-onValue(ref(db, "p_time01"), snap => {
-  const data = snap.val();
-  if (!data) return;
-
-  // ✅ SORT BY PERIOD (FIXED)
-  const rows = Object.values(data)
-    .filter(r => r && r.period)
-    .sort((a,b)=>Number(a.period)-Number(b.period));
-
-  historyEl.innerHTML = "";
-
-  rows.slice(-10).reverse().forEach(r=>{
-    const li=document.createElement("li");
-    li.textContent = `${r.period} → ${r.color.toUpperCase()}`;
-    li.className = r.color;
-    historyEl.appendChild(li);
-  });
-
-  predict(rows);
-});
-
-/* 🔮 COLOR PREDICTION */
-function predict(rows){
-  if(rows.length < 2) return;
-
-  const last = rows[rows.length-1].color;
-  const prev = rows[rows.length-2].color;
-
-  let next;
-  if(last === prev){
-    next = last === "red" ? "green" : "red";
-  }else{
-    next = ["red","green","violet"][Math.floor(Math.random()*3)];
-  }
-
-  predBox.className = `box ${next}`;
-  predBox.innerText = `NEXT: ${next.toUpperCase()}`;
-  sound.play();
+  // auto support reply
+  setTimeout(()=>{
+    const supportMsg = document.createElement("div");
+    supportMsg.className = "msg support";
+    supportMsg.innerText = "Thanks for contacting support. Please wait, our team will reply shortly.";
+    messages.appendChild(supportMsg);
+    messages.scrollTop = messages.scrollHeight;
+  },800);
 }
-
-/* ⏱️ 3-MINUTE TIMER */
-let sec = 180;
-setInterval(()=>{
-  sec--;
-  if(sec <= 0) sec = 180;
-  let m = String(Math.floor(sec/60)).padStart(2,"0");
-  let s = String(sec%60).padStart(2,"0");
-  timerEl.innerText = `${m}:${s}`;
-},1000);
-
 </script>
+
 </body>
 </html>
