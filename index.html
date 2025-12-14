@@ -5,10 +5,9 @@
 <title>Telegram Chat V4 PRO (Admin Enabled)</title>
 
 <script type="module">
-  // NOTE: I have updated the Firebase SDK version slightly for stability,
-  // and added necessary imports for get, update, set, and onValue for admin features.
+  // --- Updated Firebase Imports (FIXED) ---
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js"; 
-  import { getDatabase, ref, push, onChildAdded, get, update, set, onValue } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+  import { getDatabase, ref, push, onChildAdded, get, update, set, onValue, off } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
 
   // ✅ Firebase config (Using the configuration you provided)
   const firebaseConfig = {
@@ -105,7 +104,7 @@ body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:
 </div>
 
 <script type="module">
-// Import statements are moved to the top <script type="module"> block for global use.
+// Firebase imports are handled in the head script block
 
 const messagesContainer = document.getElementById("messages");
 const input = document.getElementById("input");
@@ -118,18 +117,17 @@ const sendBtn = document.getElementById("sendBtn");
 const ADMIN_CODE = "mahtab666777";
 let isAdmin = false;
 let typingTimer;
-// --- IMPORTANT: Use localStorage for persistent User ID (not random on every load) ---
+
+// Use localStorage for persistent User ID
 let userId = localStorage.getItem('chatUserId');
 if (!userId) {
     userId = "user_" + Math.floor(Math.random() * 100000);
     localStorage.setItem('chatUserId', userId);
 }
-// -----------------------------------------------------------------------------------
 
-let currentChattingUserId = null; // Tracks which user the admin is currently chatting with
+let currentChattingUserId = null; 
 
 /* Firebase refs */
-// We will use a main 'public' chat and separate 'chats/{userId}' paths for private chats.
 const PUBLIC_MESSAGES_REF = ref(window.db, 'public_messages'); 
 const usersRef = ref(window.db, 'users'); 
 
@@ -143,41 +141,44 @@ function timeNow() {
    ADMIN/USER FUNCTIONALITY 
    ----------------------------------------------------------------- */
 
-/* 1. Load Messages (Public or Private) */
-let messageListener = null; // To manage the active listener
+let messageListener = null; 
 
 function loadMessages(chatRef) {
-    // Stop previous listener if active
+    // Stop previous listener (off is required to properly detach)
     if (messageListener) {
-        messageListener(); // Firebase function to detach listener
+        off(chatRef, 'child_added', messageListener);
         messageListener = null;
     }
     
-    messagesContainer.innerHTML = ""; // Clear existing messages
+    messagesContainer.innerHTML = ""; 
 
-    // Set up new listener for the specific chat path
-    messageListener = onChildAdded(chatRef, (data) => {
+    // Define the callback function to handle incoming messages
+    const messageCallback = (data) => {
         const msg = data.val();
         const div = document.createElement("div");
         
         // Determine style based on sender
         if (msg.sender === userId && !isAdmin) {
-             div.className = "msg user"; // Regular user's own message
+             div.className = "msg user"; 
         } else if (msg.sender === currentChattingUserId && isAdmin) {
-             div.className = "msg user"; // Admin view: message from the user being chatted with
+             div.className = "msg user"; 
         } else if (msg.sender === 'admin' && isAdmin) {
-             div.className = "msg admin"; // Admin view: message from admin
+             div.className = "msg admin"; 
         } else if (msg.sender === 'admin') {
-             div.className = "msg support"; // User view: message from admin/support
+             div.className = "msg support"; 
         } else {
-             // Fallback for user's own message in public chat
              div.className = "msg user"; 
         }
 
         div.innerHTML = msg.text + `<div class="meta">${msg.time}</div>`;
         messagesContainer.appendChild(div);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    });
+    };
+
+    // Set up new listener for the specific chat path
+    onChildAdded(chatRef, messageCallback);
+    // Store the chatRef and callback to detach it later
+    messageListener = () => off(chatRef, 'child_added', messageCallback);
 }
 
 /* 2. User Ban Check and Info Update */
@@ -197,51 +198,51 @@ async function checkBanStatus() {
   await set(ref(window.db, `users/${userId}`), {
     isBanned: userData?.isBanned || false, 
     lastSeen: timeNow(),
-    // We only need the user ID for tracking
   });
   return false; // Not banned
 }
 
 
-/* 3. Send Message Function */
+/* 3. Send Message Function (FIXED logic to ensure quick send) */
 async function sendMsg() {
   const text = input.value.trim();
   if (!text) return;
 
-  /* Admin login logic */
+  // 1. Admin login logic
   if (text === ADMIN_CODE && !isAdmin) {
     isAdmin = true;
     adminBar.style.display = "block";
     title.innerText = "👑 ایڈمن پینل";
     input.value = "";
-    loadAdminPanel(); // Load the admin user list
+    loadAdminPanel(); 
     return;
   }
   
-  // Admin message restriction check
+  // 2. Admin message restriction check
   if (isAdmin && !currentChattingUserId) {
     alert("براہ کرم چیٹ شروع کرنے کے لیے یوزر لسٹ میں سے ایک یوزر کو منتخب کریں۔");
     input.value = "";
     return;
   }
   
-  // Non-Admin: Check ban status
+  // 3. Non-Admin: Check ban status
   if (!isAdmin) {
+    // Check ban status BEFORE sending
     const isBanned = await checkBanStatus();
     if (isBanned) return;
   }
 
+  // 4. Construct Message Object
   const msgObj = {
     sender: isAdmin ? "admin" : userId,
     text: text,
     time: timeNow()
   };
 
-  // Determine the correct Firebase path for the message
-  // If admin is chatting, use the private chat path. Otherwise, use public chat path.
+  // 5. Determine the correct Firebase path for the message
   const chatRefPath = isAdmin && currentChattingUserId
-      ? ref(window.db, `chats/${currentChattingUserId}`)
-      : PUBLIC_MESSAGES_REF;
+      ? ref(window.db, `chats/${currentChattingUserId}`) // Private Chat
+      : PUBLIC_MESSAGES_REF; // Public Chat
   
   push(chatRefPath, msgObj)
     .then(() => {
@@ -258,6 +259,8 @@ async function sendMsg() {
 
 /* 4. Admin Panel Functions (User List and Controls) */
 
+let usersListener = null; // To manage the active user list listener
+
 function renderUserList(users) {
     messagesContainer.innerHTML = `<h3 style="color:#d4af37; text-align:center;">👥 یوزر لسٹ</h3>`;
     
@@ -268,7 +271,7 @@ function renderUserList(users) {
     publicChatBtn.onclick = () => {
         currentChattingUserId = null;
         title.innerText = "Telegram Help (Public Chat)";
-        loadMessages(PUBLIC_MESSAGES_REF); // Load public chat view
+        loadMessages(PUBLIC_MESSAGES_REF); 
     };
     messagesContainer.appendChild(publicChatBtn);
 
@@ -294,11 +297,11 @@ function renderUserList(users) {
     messagesContainer.querySelectorAll('.list-btn').forEach(btn => {
         btn.onclick = async (e) => {
             const uid = e.target.getAttribute('data-uid');
-            if (e.target.innerText.includes('BAN')) {
+            if (e.target.innerText.includes('BAN') || e.target.innerText.includes('UNBAN')) {
                 // Ban/Unban action
                 const isCurrentlyBanned = e.target.innerText === 'BAN کریں';
                 await update(ref(window.db, `users/${uid}`), { isBanned: isCurrentlyBanned });
-                loadAdminPanel(); // Refresh list
+                // We don't need to manually call loadAdminPanel() because onValue is listening.
             } else if (e.target.innerText.includes('CHAT')) {
                 // Switch to private chat view
                 currentChattingUserId = uid;
@@ -311,15 +314,31 @@ function renderUserList(users) {
 
 // Function to load the user list view
 function loadAdminPanel() {
+    // Stop previous listener if active
+    if (usersListener) {
+        usersListener(); 
+        usersListener = null;
+    }
+
     // Listen for changes in the users path to keep the list updated
-    onValue(usersRef, (snapshot) => {
+    const userCallback = (snapshot) => {
         const users = snapshot.val() || {};
         renderUserList(users);
-    });
+    };
+
+    onValue(usersRef, userCallback);
+    // Store the listener reference
+    usersListener = () => off(usersRef, 'value', userCallback);
 }
 
 // Function to load the private chat view
 function loadUserChat(uid) {
+    // Stop user list listener
+    if (usersListener) {
+        usersListener();
+        usersListener = null;
+    }
+
     messagesContainer.innerHTML = "";
     
     // Back button to user list
@@ -334,12 +353,12 @@ function loadUserChat(uid) {
 
     const chatPath = ref(window.db, `chats/${uid}`);
     
-    loadMessages(chatPath); // Load messages from the private chat path
+    loadMessages(chatPath); 
 }
 
 
 /* -----------------------------------------------------------------
-   INITIALIZATION AND BINDING 
+   INITIALIZATION AND BINDING (FINAL BINDING)
    ----------------------------------------------------------------- */
 
 // Start by loading public messages when the app first opens
@@ -358,10 +377,13 @@ input.addEventListener("input", () => {
   typingTimer = setTimeout(() => typing.style.display = "none", 700);
 });
 
-/* bind send button */
+// ✅ FIXED: Bind the send function directly to the button and input field
+// This ensures the buttons are always working regardless of the DOM content changes in 'messagesContainer'
+
+// Bind send button
 sendBtn.addEventListener("click", sendMsg);
 
-/* bind Enter key */
+// Bind Enter key
 input.addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendMsg();
 });
