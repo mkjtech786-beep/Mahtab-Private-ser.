@@ -1,35 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Support Chat - Media Working</title>
-<style>
-body{margin:0;font-family:Arial;background:#0b0b0f;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;}
-.chat{width:100%;max-width:500px;height:90vh;background:#121212;border-radius:16px;display:flex;flex-direction:column;position:relative;}
-.header{padding:14px;background:#161616;font-weight:bold;color:#d4af37;}
-.messages{flex:1;padding:12px;overflow-y:auto;}
-.msg{margin-bottom:8px;display:flex;flex-direction:column;}
-.msg.user .bubble{align-self:flex-end;background:#2563eb;color:#fff;}
-.msg.admin .bubble{align-self:flex-start;background:#f5d76e;color:#000;}
-.bubble{padding:10px;border-radius:12px;max-width:75%;word-wrap:break-word;}
-input{flex:1;padding:10px;border-radius:10px;border:none;background:#0f0f0f;color:#fff;}
-.input-box{display:flex;padding:10px;border-top:1px solid #1e293b;gap:6px;}
-button{padding:8px;border:none;border-radius:8px;cursor:pointer;background:#d4af37;font-weight:bold;color:#000;}
-img{max-width:200px;border-radius:12px;display:block;margin-bottom:4px;}
-audio{max-width:200px;border-radius:8px;margin-bottom:4px;}
-#users{display:none;background:#020617;padding:8px;overflow-y:auto;max-height:120px;}
-.user-item{padding:6px;border-bottom:1px solid #1e293b;cursor:pointer;}
-.user-item:hover{background:#333;}
-.admin-bar{display:none;gap:6px;padding:6px;background:#020617;flex-wrap:wrap;}
-.notice{font-size:12px;color:#f87171;padding-left:10px;}
-@media(max-width:600px){.chat{width:100%;height:100vh;}}
-</style>
+<title>Support Chat Pro</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, set, update, onValue } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
-import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
+import {
+  getDatabase, ref, push, onChildAdded, onValue,
+  set, update, remove, onDisconnect
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 /* ---------------- FIREBASE ---------------- */
 const firebaseConfig = {
@@ -37,166 +20,387 @@ const firebaseConfig = {
   authDomain: "safe-chat-c0b9c.firebaseapp.com",
   databaseURL: "https://safe-chat-c0b9c-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "safe-chat-c0b9c",
-  storageBucket: "safe-chat-c0b9c.appspot.com",
+  storageBucket: "safe-chat-c0b9c.firebasestorage.app",
   messagingSenderId: "119640275300",
   appId: "1:119640275300:web:20ae984f4af1ffe6a62271"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const storage = getStorage(app);
 
 /* ---------------- STATE ---------------- */
-const ADMIN_CODE="mahtab666777";
-let uid = localStorage.getItem("uid") || "user_"+Math.random().toString(36).slice(2,8);
-localStorage.setItem("uid",uid);
+const ADMIN_CODE = "mahtab666777";
+let uid = localStorage.getItem("uid") || "user_" + Math.random().toString(36).slice(2,8);
 let name = localStorage.getItem("name");
-let isAdmin=false;
-let activeUser=null;
+let isAdmin = false;
+let activeUser = null;
+
+localStorage.setItem("uid", uid);
 
 /* ---------------- DOM ---------------- */
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
-const sendBtn = document.getElementById("sendBtn");
-const attachBtn = document.getElementById("attachBtn");
-const recordBtn = document.getElementById("recordBtn");
-const fileInput = document.getElementById("fileInput");
+const sendBtn = document.getElementById("send");
+const title = document.getElementById("title");
 const usersDiv = document.getElementById("users");
-const adminBar = document.getElementById("adminBar");
+const adminTools = document.getElementById("adminTools");
 const notice = document.getElementById("notice");
 
-/* ---------------- SOUNDS ---------------- */
+/* ---------------- SOUND ---------------- */
 const sendSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3");
 const receiveSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
 
-/* ---------------- NAME ---------------- */
-if(!name){ name = prompt("Enter your name") || "Guest"; localStorage.setItem("name",name); }
-
-/* ---------------- USER INFO ---------------- */
-set(ref(db,`chats/${uid}/info`),{name,online:true,lastSeen:Date.now()});
-onValue(ref(db,`chats/${uid}/info/locked`),s=>{ input.disabled=!!s.val(); notice.innerText=s.val()?"🔒 Chat locked by admin":""; });
-
-/* ---------------- SEND MESSAGE ---------------- */
-sendBtn.onclick = sendMsg;
-input.addEventListener("keypress", e=>{ if(e.key==="Enter") sendMsg(); });
-
-function sendMsg(){
-  const text = input.value.trim();
-  if(!text) return;
-  if(!isAdmin && text===ADMIN_CODE){ isAdmin=true; startAdmin(); input.value=""; return; }
-  const target = isAdmin ? activeUser : uid;
-  if(!target){ alert("Select user"); return; }
-  push(ref(db,`chats/${target}/messages`),{
-    sender:isAdmin?"admin":"user",
-    type:"text",
-    text,
-    time:new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })
-  });
-  sendSound.play();
-  input.value="";
+/* ---------------- USER NAME ---------------- */
+if (!name) {
+  name = prompt("Enter your name");
+  if (!name) name = "Guest";
+  localStorage.setItem("name", name);
 }
 
-/* ---------------- IMAGE ---------------- */
-attachBtn.onclick = ()=>fileInput.click();
-fileInput.onchange = async e=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  const storageRef = sRef(storage,`chatImages/${uid}/${Date.now()}_${file.name}`);
-  await uploadBytes(storageRef,file);
-  const url = await getDownloadURL(storageRef);
-  const target = isAdmin?activeUser:uid;
-  push(ref(db,`chats/${target}/messages`),{
-    sender:isAdmin?"admin":"user",
-    type:"image",
-    url,
-    time:new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})
-  });
-  sendSound.play();
-};
+/* ---------------- USER INFO ---------------- */
+const infoRef = ref(db, `chats/${uid}/info`);
+set(infoRef, {
+  name,
+  online: true,
+  lastSeen: Date.now(),
+  blocked: false,
+  locked: false,
+  unread: 0
+});
 
-/* ---------------- VOICE ---------------- */
-let mediaRecorder,audioChunks=[];
-recordBtn.onclick = async () => {
-  if(!mediaRecorder || mediaRecorder.state==="inactive"){
-    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
-    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-    mediaRecorder.onstop = async () => {
-      const blob = new Blob(audioChunks,{type:'audio/mp3'});
-      const file = new File([blob],`voice_${Date.now()}.mp3`,{type:'audio/mp3'});
-      const storageRef = sRef(storage,`chatAudio/${uid}/${file.name}`);
-      await uploadBytes(storageRef,file);
-      const url = await getDownloadURL(storageRef);
-      const target = isAdmin?activeUser:uid;
-      push(ref(db,`chats/${target}/messages`),{
-        sender:isAdmin?"admin":"user",
-        type:"audio",
-        url,
-        time:new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })
-      });
-      sendSound.play();
-    };
-    mediaRecorder.start();
-    recordBtn.innerText="⏹️ Stop";
-  } else if(mediaRecorder.state==="recording"){
-    mediaRecorder.stop();
-    recordBtn.innerText="🎤";
-  }
-};
+onDisconnect(infoRef).update({
+  online: false,
+  lastSeen: Date.now()
+});
+
+/* ---------------- USER MODE ---------------- */
+function startUser() {
+  onChildAdded(ref(db, `chats/${uid}/messages`), snap => {
+    render(snap.key, snap.val());
+    receiveSound.play();
+  });
+
+  onValue(ref(db, `chats/${uid}/info/locked`), s => {
+    if (s.val()) {
+      input.disabled = true;
+      notice.innerText = "🔒 Chat is locked by admin";
+    } else {
+      input.disabled = false;
+      notice.innerText = "";
+    }
+  });
+}
 
 /* ---------------- ADMIN DASHBOARD ---------------- */
-function startAdmin(){
-  document.getElementById("title").innerText="👑 Admin Dashboard";
-  usersDiv.style.display="block";
-  adminBar.style.display="flex";
-  onChildAdded(ref(db,"chats"),snap=>{
-    const u=snap.key; const info=snap.val().info||{};
+function startAdmin() {
+  title.innerText = "👑 Admin Dashboard";
+  usersDiv.style.display = "block";
+  adminTools.style.display = "flex";
+
+  onChildAdded(ref(db, "chats"), snap => {
+    const u = snap.key;
+    const info = snap.val().info || {};
     const div = document.createElement("div");
-    div.className="user-item";
-    div.innerHTML=`<b>${info.name||u}</b> <small>Last seen: ${new Date(info.lastSeen||0).toLocaleTimeString()}</small>`;
-    div.onclick=()=>loadUser(u);
+    div.className = "user";
+    div.innerHTML = `
+      <b>${info.name || u}</b>
+      <small>Unread: ${info.unread || 0}</small>
+      <small>${info.online ? "🟢 Online" : "Last seen: " + new Date(info.lastSeen).toLocaleTimeString()}</small>
+    `;
+    div.onclick = () => loadUser(u);
     usersDiv.appendChild(div);
   });
 }
-function loadUser(u){
-  activeUser=u; messages.innerHTML="";
-  onChildAdded(ref(db,`chats/${u}/messages`),snap=>{ renderMsg(snap.val()); receiveSound.play(); });
+
+function loadUser(u) {
+  activeUser = u;
+  messages.innerHTML = "";
+  update(ref(db, `chats/${u}/info`), { unread: 0 });
+
+  onChildAdded(ref(db, `chats/${u}/messages`), snap => {
+    render(snap.key, snap.val(), true);
+    receiveSound.play();
+  });
 }
 
-/* ---------------- RENDER MESSAGE ---------------- */
-function renderMsg(m){
+/* ---------------- SEND ---------------- */
+sendBtn.onclick = () => {
+  const text = input.value.trim();
+  if (!text) return;
+
+  if (!isAdmin && text === ADMIN_CODE) {
+    isAdmin = true;
+    startAdmin();
+    input.value = "";
+    return;
+  }
+
+  const target = isAdmin ? activeUser : uid;
+  if (!target) return alert("Select user");
+
+  push(ref(db, `chats/${target}/messages`), {
+    sender: isAdmin ? "admin" : "user",
+    text,
+    time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+  });
+
+  if (!isAdmin) {
+    update(ref(db, `chats/${uid}/info`), { unread: (Math.random()*1000)|0 });
+  }
+
+  sendSound.play();
+  input.value = "";
+};
+
+/* ---------------- ADMIN ACTIONS ---------------- */
+document.getElementById("lockBtn").onclick = () => {
+  if (!activeUser) return alert("Select user");
+  update(ref(db, `chats/${activeUser}/info`), { locked: true });
+};
+
+document.getElementById("unlockBtn").onclick = () => {
+  if (!activeUser) return alert("Select user");
+  update(ref(db, `chats/${activeUser}/info`), { locked: false });
+};
+
+/* ---------------- RENDER ---------------- */
+function render(id, m, adminView=false) {
   const d = document.createElement("div");
-  d.className="msg "+m.sender;
-  let content="";
-  if(m.type==="text") content=m.text;
-  else if(m.type==="image") content=`<img src="${m.url}" style="max-width:200px;border-radius:12px"/>`;
-  else if(m.type==="audio") content=`<audio controls src="${m.url}"></audio>`;
-  d.innerHTML=`<div class="bubble">${content}<span>${m.time}</span></div>`;
+  d.className = "msg " + m.sender;
+  d.innerHTML = `
+    <div class="bubble">
+      ${m.text}
+      <span>${m.time}</span>
+      ${adminView && m.sender==="admin" ? `
+        <button onclick="editMsg('${id}')">✏️</button>
+        <button onclick="delMsg('${id}')">🗑️</button>
+      ` : ""}
+    </div>
+  `;
   messages.appendChild(d);
   messages.scrollTop = messages.scrollHeight;
 }
 
-/* ---------------- USER MODE ---------------- */
-onChildAdded(ref(db,`chats/${uid}/messages`),snap=>{ renderMsg(snap.val()); receiveSound.play(); });
+window.delMsg = (id) => {
+  if (!activeUser) return;
+  if (!confirm("Delete message?")) return;
+  remove(ref(db, `chats/${activeUser}/messages/${id}`));
+};
 
+window.editMsg = (id) => {
+  const newText = prompt("Edit message");
+  if (!newText) return;
+  update(ref(db, `chats/${activeUser}/messages/${id}`), { text: newText });
+};
+
+/* ---------------- INIT ---------------- */
+startUser();
 </script>
+
+<style>
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: #0f172a;
+  color: #fff;
+}
+
+.chat {
+  display: flex;
+  height: 100vh;
+  transition: all 0.3s ease;
+}
+
+#users {
+  width: 240px;
+  background: #020617;
+  display: none;
+  overflow-y: auto;
+  border-right: 1px solid #1e293b;
+  transition: all 0.3s ease;
+}
+
+.user {
+  padding: 12px 10px;
+  border-bottom: 1px solid #1e293b;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: 0.2s;
+}
+
+.user:hover {
+  background: #1e293b;
+}
+
+.user small {
+  display: block;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #0f172a;
+}
+
+.header {
+  padding: 16px;
+  background: linear-gradient(90deg, #4b6cb7, #182848);
+  font-weight: 600;
+  font-size: 18px;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.admin-tools {
+  display: none;
+  gap: 8px;
+  padding: 10px;
+  background: #1e293b;
+  border-bottom: 1px solid #2e3a59;
+}
+
+.admin-tools button {
+  background: linear-gradient(90deg, #f5d76e, #f1c40f);
+  color: #000;
+  padding: 8px 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s;
+  border-radius: 8px;
+}
+
+.admin-tools button:hover {
+  opacity: 0.85;
+}
+
+.messages {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msg {
+  display: flex;
+  margin-bottom: 6px;
+}
+
+.user.msg {
+  justify-content: flex-end;
+}
+
+.admin.msg {
+  justify-content: flex-start;
+}
+
+.bubble {
+  max-width: 70%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  position: relative;
+  transition: 0.2s;
+}
+
+.user .bubble {
+  background: #2563eb;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.admin .bubble {
+  background: #f5d76e;
+  color: #000;
+  border-bottom-left-radius: 4px;
+}
+
+.bubble span {
+  display: block;
+  font-size: 10px;
+  opacity: 0.7;
+  margin-top: 4px;
+  text-align: right;
+}
+
+.bubble button {
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 6px;
+}
+
+.input {
+  display: flex;
+  padding: 12px;
+  border-top: 1px solid #1e293b;
+  background: #1e293b;
+}
+
+input {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: none;
+  font-size: 14px;
+  outline: none;
+  background: #0f172a;
+  color: #fff;
+}
+
+input::placeholder {
+  color: #94a3b8;
+}
+
+button#send {
+  margin-left: 8px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #4b6cb7, #182848);
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s;
+  border: none;
+}
+
+button#send:hover {
+  opacity: 0.85;
+}
+
+#notice {
+  font-size: 12px;
+  color: #f87171;
+  padding-left: 12px;
+  margin-bottom: 4px;
+}
+</style>
 </head>
+
 <body>
 <div class="chat">
-  <div class="header" id="title">Support Chat</div>
   <div id="users"></div>
-  <div class="admin-bar" id="adminBar">
-    <button onclick="update(ref(db,`chats/${activeUser}/info`),{locked:true})">🔒 Lock</button>
-    <button onclick="update(ref(db,`chats/${activeUser}/info`),{locked:false})">🔓 Unlock</button>
-  </div>
-  <div class="messages" id="messages"></div>
-  <div class="notice" id="notice"></div>
-  <div class="input-box">
-    <button id="attachBtn">📷</button>
-    <button id="recordBtn">🎤</button>
-    <input id="input" placeholder="Type message">
-    <button id="sendBtn">➤</button>
-    <input type="file" id="fileInput" style="display:none" accept="image/*">
+  <div class="main">
+    <div class="header" id="title">Support Chat</div>
+
+    <div class="admin-tools" id="adminTools">
+      <button id="lockBtn">🔒 Lock</button>
+      <button id="unlockBtn">🔓 Unlock</button>
+    </div>
+
+    <div class="messages" id="messages"></div>
+    <div id="notice"></div>
+
+    <div class="input">
+      <input id="input" placeholder="Type message">
+      <button id="send">Send</button>
+    </div>
   </div>
 </div>
 </body>
