@@ -2,12 +2,12 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Chat Help</title>
+<title>WhatsApp Help Chat</title>
 
 <style>
 body{
   margin:0;
-  background:#0f0f0f;
+  background:#0b141a;
   font-family:Arial, sans-serif;
   display:flex;
   justify-content:center;
@@ -15,153 +15,182 @@ body{
   height:100vh;
 }
 
-.chat-box{
+.chat{
   width:360px;
   height:600px;
-  background:#111;
-  border-radius:16px;
+  background:#efeae2;
   display:flex;
   flex-direction:column;
-  box-shadow:0 0 20px rgba(0,0,0,0.6);
+  border-radius:12px;
+  overflow:hidden;
 }
 
-.chat-header{
-  background:#1f1f1f;
-  padding:15px;
-  text-align:center;
-  font-size:18px;
+/* HEADER */
+.header{
+  background:#075e54;
+  color:#fff;
+  padding:10px;
+}
+.header-title{
   font-weight:bold;
-  color:#00ff99;
-  border-radius:16px 16px 0 0;
+}
+.header-status{
+  font-size:12px;
+  color:#d4f8e8;
 }
 
-.chat-header.admin{
-  color:#ff4d4d;
-}
-
-.chat-messages{
+/* MESSAGES */
+.messages{
   flex:1;
-  padding:15px;
+  padding:10px;
   overflow-y:auto;
+  background:url("https://i.imgur.com/8bQpE6P.png");
 }
 
 .msg{
   max-width:75%;
-  padding:10px 14px;
-  margin-bottom:10px;
-  border-radius:14px;
+  padding:8px 10px;
+  margin-bottom:8px;
+  border-radius:8px;
   font-size:14px;
+  line-height:1.4;
 }
 
 .user{
-  background:#2ecc71;
-  color:#000;
+  background:#dcf8c6;
   margin-left:auto;
-  border-bottom-right-radius:4px;
+  border-bottom-right-radius:0;
 }
 
 .support{
-  background:#2b2b2b;
-  color:#fff;
+  background:#fff;
   margin-right:auto;
-  border-bottom-left-radius:4px;
+  border-bottom-left-radius:0;
 }
 
 .admin{
-  background:#ff4d4d;
+  background:#f44336;
   color:#fff;
   margin-right:auto;
 }
 
-.chat-input{
-  display:flex;
-  padding:10px;
-  background:#1a1a1a;
-  border-radius:0 0 16px 16px;
+.typing{
+  font-size:12px;
+  color:#555;
+  margin-left:10px;
+  margin-bottom:5px;
 }
 
-.chat-input input{
+/* INPUT */
+.input-box{
+  display:flex;
+  padding:8px;
+  background:#f0f0f0;
+}
+.input-box input{
   flex:1;
   padding:10px;
   border:none;
-  border-radius:10px;
+  border-radius:20px;
   outline:none;
 }
-
-.chat-input button{
-  margin-left:8px;
-  padding:10px 15px;
+.input-box button{
+  margin-left:6px;
+  background:#25d366;
   border:none;
-  border-radius:10px;
-  background:#00ff99;
-  font-weight:bold;
+  color:#fff;
+  padding:10px 14px;
+  border-radius:50%;
+  font-size:16px;
   cursor:pointer;
+}
+
+/* ADMIN BAR */
+.admin-bar{
+  display:none;
+  background:#b71c1c;
+  color:#fff;
+  text-align:center;
+  font-size:12px;
+  padding:4px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="chat-box">
-  <div class="chat-header" id="header">💬 CHAT HELP SUPPORT</div>
+<div class="chat">
 
-  <div class="chat-messages" id="messages">
+  <div class="header" id="header">
+    <div class="header-title">Help Support</div>
+    <div class="header-status" id="status">online</div>
+  </div>
+
+  <div class="admin-bar" id="adminBar">ADMIN MODE</div>
+
+  <div class="messages" id="messages">
     <div class="msg support">Hello 👋 How can we help you?</div>
   </div>
 
-  <div class="chat-input">
-    <input type="text" id="input" placeholder="Type your message...">
-    <button onclick="sendMsg()">Send</button>
+  <div class="typing" id="typing" style="display:none;">typing…</div>
+
+  <div class="input-box">
+    <input type="text" id="input" placeholder="Type a message">
+    <button onclick="sendMsg()">➤</button>
   </div>
+
 </div>
 
 <script>
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
+const typing = document.getElementById("typing");
+const adminBar = document.getElementById("adminBar");
 const header = document.getElementById("header");
 
 let isAdmin = false;
 const ADMIN_CODE = "mahtab666777";
+let typingTimer;
+
+/* typing indicator */
+input.addEventListener("input",()=>{
+  typing.style.display="block";
+  clearTimeout(typingTimer);
+  typingTimer=setTimeout(()=>typing.style.display="none",700);
+});
 
 function sendMsg(){
-  const text = input.value.trim();
-  if(text === "") return;
+  const text=input.value.trim();
+  if(!text) return;
 
-  // SECRET ADMIN LOGIN
-  if(text === ADMIN_CODE){
-    isAdmin = true;
-    header.innerText = "🔐 ADMIN PANEL";
-    header.classList.add("admin");
-
-    const adminMsg = document.createElement("div");
-    adminMsg.className = "msg admin";
-    adminMsg.innerText = "Admin mode activated ✅";
-    messages.appendChild(adminMsg);
-
-    input.value = "";
-    messages.scrollTop = messages.scrollHeight;
+  /* secret admin login */
+  if(text===ADMIN_CODE){
+    isAdmin=true;
+    adminBar.style.display="block";
+    header.querySelector(".header-title").innerText="Admin Panel";
+    input.value="";
     return;
   }
 
-  // USER MESSAGE
-  const userMsg = document.createElement("div");
-  userMsg.className = "msg user";
-  userMsg.innerText = text;
+  const userMsg=document.createElement("div");
+  userMsg.className="msg user";
+  userMsg.innerText=text;
   messages.appendChild(userMsg);
+  input.value="";
+  messages.scrollTop=messages.scrollHeight;
 
-  input.value = "";
-  messages.scrollTop = messages.scrollHeight;
+  typing.style.display="block";
 
-  // SUPPORT / ADMIN AUTO REPLY
   setTimeout(()=>{
-    const reply = document.createElement("div");
-    reply.className = "msg " + (isAdmin ? "admin" : "support");
-    reply.innerText = isAdmin
-      ? "Admin message received."
-      : "Thanks for contacting support. Please wait.";
+    typing.style.display="none";
+    const reply=document.createElement("div");
+    reply.className="msg "+(isAdmin?"admin":"support");
+    reply.innerText=isAdmin
+      ?"Admin received message."
+      :"Thanks for contacting support.";
     messages.appendChild(reply);
-    messages.scrollTop = messages.scrollHeight;
-  },700);
+    messages.scrollTop=messages.scrollHeight;
+  },1000);
 }
 </script>
 
