@@ -92,6 +92,7 @@ function startAdmin() {
   });
 }
 
+/* ---------------- LOAD USER ---------------- */
 function loadUser(u) {
   activeUser = u;
   messages.innerHTML = "";
@@ -157,6 +158,14 @@ function render(id, m, adminView=false) {
 window.delMsg = (id) => { if (!activeUser) return; if (!confirm("Delete message?")) return; remove(ref(db, `chats/${activeUser}/messages/${id}`)); };
 window.editMsg = (id) => { const newText = prompt("Edit message"); if (!newText) return; update(ref(db, `chats/${activeUser}/messages/${id}`), { text: newText }); };
 
+/* ---------------- USER SEARCH ---------------- */
+document.getElementById("searchUser").addEventListener("input", e => {
+  const filter = e.target.value.toLowerCase();
+  document.querySelectorAll("#users .user").forEach(u => {
+    u.style.display = u.innerText.toLowerCase().includes(filter) ? "block" : "none";
+  });
+});
+
 /* ---------------- INIT ---------------- */
 startUser();
 </script>
@@ -166,6 +175,7 @@ startUser();
 body { margin:0; font-family: Poppins, sans-serif; background:#1a1a2e; color:#fff; }
 .chat { display:flex; height:100vh; }
 #users { width:250px; background:#1b1b38; display:none; overflow:auto; border-right:1px solid #333; }
+#users input { margin:8px; padding:6px; border-radius:8px; border:none; width:calc(100% - 16px); }
 .user { padding:12px; border-bottom:1px solid #2a2a4d; cursor:pointer; transition:0.3s; }
 .user:hover { background:#2c2c55; }
 .user small { display:block; color:#aaa; font-size:12px; }
@@ -203,12 +213,29 @@ button#send:hover { transform:scale(1.05); }
 .messages::-webkit-scrollbar, #users::-webkit-scrollbar { width:8px; }
 .messages::-webkit-scrollbar-thumb, #users::-webkit-scrollbar-thumb { background:#fbb034; border-radius:4px; }
 .messages::-webkit-scrollbar-track, #users::-webkit-scrollbar-track { background:#1b1b38; }
+
+/* ---------------- RESPONSIVE ---------------- */
+@media (max-width: 768px) {
+  .chat { flex-direction: column; height: 100vh; }
+  #users { width: 100%; height: 120px; display: flex; overflow-x: auto; border-right: none; border-bottom:1px solid #333; }
+  .user { flex: 0 0 auto; min-width: 120px; margin:0 5px; border-bottom:none; border-right:1px solid #333; }
+  .main { flex:1; }
+  .messages { padding:10px; }
+  .bubble { max-width: 80%; font-size: 13px; }
+  .input { flex-direction: column; }
+  input { width: 100%; margin-bottom: 6px; }
+  button#send { width: 100%; margin-left:0; }
+  .admin-tools { flex-direction: column; }
+  .admin-tools button { width: 100%; margin-bottom: 5px; }
+}
 </style>
 </head>
 
 <body>
 <div class="chat">
-  <div id="users"></div>
+  <div id="users">
+    <input type="text" id="searchUser" placeholder="Search user...">
+  </div>
   <div class="main">
     <div class="header" id="title">MAHTAB SAFE CHAT Pro</div>
 
