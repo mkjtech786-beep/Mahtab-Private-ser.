@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Telegram Support Chat</title>
 
+<!-- Firebase Init -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
   import { getDatabase } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
@@ -58,6 +59,7 @@ body{margin:0;background:#0b0b0f;font-family:Arial;display:flex;justify-content:
   </div>
 </div>
 
+<!-- CHAT LOGIC -->
 <script type="module">
 import { ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
@@ -71,6 +73,7 @@ if (!userId) {
 /* ADMIN */
 const ADMIN_CODE = "mahtab666777";
 let isAdmin = false;
+let activeAdminUser = null;
 
 /* DOM */
 const messages = document.getElementById("messages");
@@ -83,11 +86,11 @@ const title = document.getElementById("title");
 const timeNow = () =>
   new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-/* ================= USER LISTENER ================= */
+/* ================= USER CHAT ================= */
 function startUserChat() {
-  const userChatRef = ref(window.db, "supportChats/" + userId + "/messages");
+  const userRef = ref(window.db, "supportChats/" + userId + "/messages");
 
-  onChildAdded(userChatRef, (snap) => {
+  onChildAdded(userRef, snap => {
     const m = snap.val();
     const d = document.createElement("div");
     d.className = "msg " + (m.sender === "admin" ? "admin" : "user");
@@ -97,17 +100,19 @@ function startUserChat() {
   });
 }
 
-/* ================= ADMIN LISTENER ================= */
+/* ================= ADMIN CHAT ================= */
 function startAdminChat() {
-  const allChatsRef = ref(window.db, "supportChats");
+  const allRef = ref(window.db, "supportChats");
 
-  onChildAdded(allChatsRef, (userSnap) => {
+  onChildAdded(allRef, userSnap => {
     const uid = userSnap.key;
 
     onChildAdded(
       ref(window.db, "supportChats/" + uid + "/messages"),
-      (msgSnap) => {
+      msgSnap => {
         const m = msgSnap.val();
+        activeAdminUser = uid;
+
         const d = document.createElement("div");
         d.className = "msg user";
         d.innerHTML =
@@ -135,15 +140,16 @@ function sendMsg() {
     return;
   }
 
-  /* ADMIN REPLY FORMAT: @user_xxxxx message */
-  if (isAdmin && text.startsWith("@")) {
-    const parts = text.split(" ");
-    const targetUser = parts[0].replace("@", "");
-    const msgText = parts.slice(1).join(" ");
+  /* ADMIN REPLY */
+  if (isAdmin) {
+    if (!activeAdminUser) {
+      alert("No user message yet");
+      return;
+    }
 
-    push(ref(window.db, "supportChats/" + targetUser + "/messages"), {
+    push(ref(window.db, "supportChats/" + activeAdminUser + "/messages"), {
       sender: "admin",
-      text: msgText,
+      text,
       time: timeNow()
     });
 
@@ -161,7 +167,7 @@ function sendMsg() {
   input.value = "";
 }
 
-/* START USER CHAT BY DEFAULT */
+/* START USER MODE */
 startUserChat();
 
 /* EVENTS */
