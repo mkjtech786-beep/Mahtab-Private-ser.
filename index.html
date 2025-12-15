@@ -1,17 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MAHTAB SAFE CHAT Premium</title>
+<title>MAHTAB SAFE CHAT</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, onValue, set, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import {
+  getDatabase, ref, push, onChildAdded, onValue,
+  set, update, remove, onDisconnect
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
-/* ---------------- FIREBASE CONFIG ---------------- */
+/* ---------------- FIREBASE ---------------- */
 const firebaseConfig = {
   apiKey: "AIzaSyAqfguS1ucAtklcl06eB1JIWQr46XMpe7g",
   authDomain: "safe-chat-c0b9c.firebaseapp.com",
@@ -31,6 +34,7 @@ let uid = localStorage.getItem("uid") || "user_" + Math.random().toString(36).sl
 let name = localStorage.getItem("name");
 let isAdmin = false;
 let activeUser = null;
+
 localStorage.setItem("uid", uid);
 
 /* ---------------- DOM ---------------- */
@@ -48,32 +52,48 @@ const receiveSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2354
 
 /* ---------------- USER NAME ---------------- */
 if (!name) {
-  name = prompt("Enter your name") || "Guest";
+  name = prompt("Enter your name");
+  if (!name) name = "Guest";
   localStorage.setItem("name", name);
 }
 
 /* ---------------- USER INFO ---------------- */
 const infoRef = ref(db, `chats/${uid}/info`);
-set(infoRef, { name, online: true, lastSeen: Date.now(), blocked: false, locked: false, unread: 0 });
-onDisconnect(infoRef).update({ online: false, lastSeen: Date.now() });
+set(infoRef, {
+  name,
+  online: true,
+  lastSeen: Date.now(),
+  blocked: false,
+  locked: false,
+  unread: 0
+});
+
+onDisconnect(infoRef).update({
+  online: false,
+  lastSeen: Date.now()
+});
 
 /* ---------------- USER MODE ---------------- */
 function startUser() {
   onChildAdded(ref(db, `chats/${uid}/messages`), snap => {
-    const m = snap.val();
-    render(snap.key, m);
-    if(m.sender !== "user") receiveSound.play();
+    render(snap.key, snap.val());
+    receiveSound.play();
   });
 
   onValue(ref(db, `chats/${uid}/info/locked`), s => {
-    input.disabled = s.val();
-    notice.innerText = s.val() ? "🔒 Chat is locked by admin" : "";
+    if (s.val()) {
+      input.disabled = true;
+      notice.innerText = "🔒 Chat is locked by admin";
+    } else {
+      input.disabled = false;
+      notice.innerText = "";
+    }
   });
 }
 
 /* ---------------- ADMIN DASHBOARD ---------------- */
 function startAdmin() {
-  title.innerHTML = "<span class='premium-title'>👑 MAHTAB SAFE CHAT Admin Dashboard</span>";
+  title.innerText = "👑 Admin Dashboard";
   usersDiv.style.display = "block";
   adminTools.style.display = "flex";
 
@@ -92,7 +112,6 @@ function startAdmin() {
   });
 }
 
-/* ---------------- LOAD USER ---------------- */
 function loadUser(u) {
   activeUser = u;
   messages.innerHTML = "";
@@ -125,7 +144,10 @@ sendBtn.onclick = () => {
     time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
   });
 
-  if (isAdmin && activeUser) update(ref(db, `chats/${activeUser}/info`), { unread: (Math.random()*1000)|0 });
+  if (!isAdmin) {
+    update(ref(db, `chats/${uid}/info`), { unread: (Math.random()*1000)|0 });
+  }
+
   sendSound.play();
   input.value = "";
 };
@@ -135,6 +157,7 @@ document.getElementById("lockBtn").onclick = () => {
   if (!activeUser) return alert("Select user");
   update(ref(db, `chats/${activeUser}/info`), { locked: true });
 };
+
 document.getElementById("unlockBtn").onclick = () => {
   if (!activeUser) return alert("Select user");
   update(ref(db, `chats/${activeUser}/info`), { locked: false });
@@ -144,100 +167,65 @@ document.getElementById("unlockBtn").onclick = () => {
 function render(id, m, adminView=false) {
   const d = document.createElement("div");
   d.className = "msg " + m.sender;
-  d.innerHTML = `<div class="bubble">
-                   ${m.text}
-                   <span>${m.time}</span>
-                   ${adminView && m.sender==="admin" ? `
-                     <button onclick="editMsg('${id}')">✏️</button>
-                     <button onclick="delMsg('${id}')">🗑️</button>` : ""}
-                 </div>`;
+  d.innerHTML = `
+    <div class="bubble">
+      ${m.text}
+      <span>${m.time}</span>
+      ${adminView && m.sender==="admin" ? `
+        <button onclick="editMsg('${id}')">✏️</button>
+        <button onclick="delMsg('${id}')">🗑️</button>
+      ` : ""}
+    </div>
+  `;
   messages.appendChild(d);
   messages.scrollTop = messages.scrollHeight;
 }
 
-window.delMsg = (id) => { if (!activeUser) return; if (!confirm("Delete message?")) return; remove(ref(db, `chats/${activeUser}/messages/${id}`)); };
-window.editMsg = (id) => { const newText = prompt("Edit message"); if (!newText) return; update(ref(db, `chats/${activeUser}/messages/${id}`), { text: newText }); };
+window.delMsg = (id) => {
+  if (!activeUser) return;
+  if (!confirm("Delete message?")) return;
+  remove(ref(db, `chats/${activeUser}/messages/${id}`));
+};
 
-/* ---------------- USER SEARCH ---------------- */
-document.getElementById("searchUser").addEventListener("input", e => {
-  const filter = e.target.value.toLowerCase();
-  document.querySelectorAll("#users .user").forEach(u => {
-    u.style.display = u.innerText.toLowerCase().includes(filter) ? "block" : "none";
-  });
-});
+window.editMsg = (id) => {
+  const newText = prompt("Edit message");
+  if (!newText) return;
+  update(ref(db, `chats/${activeUser}/messages/${id}`), { text: newText });
+};
 
 /* ---------------- INIT ---------------- */
 startUser();
 </script>
 
 <style>
-/* ---------------- GENERAL ---------------- */
-body { margin:0; font-family: Poppins, sans-serif; background:#1a1a2e; color:#fff; }
-.chat { display:flex; height:100vh; }
-#users { width:250px; background:#1b1b38; display:none; overflow:auto; border-right:1px solid #333; }
-#users input { margin:8px; padding:6px; border-radius:8px; border:none; width:calc(100% - 16px); }
-.user { padding:12px; border-bottom:1px solid #2a2a4d; cursor:pointer; transition:0.3s; }
-.user:hover { background:#2c2c55; }
-.user small { display:block; color:#aaa; font-size:12px; }
-.main { flex:1; display:flex; flex-direction:column; }
-.header { padding:16px; background:#14142b; font-weight:600; display:flex; justify-content:center; align-items:center; position:relative; box-shadow:0 2px 8px rgba(0,0,0,0.5);}
-.premium-title { color:#fbb034; font-size:20px; text-shadow: 0 0 10px #fbb034, 0 0 20px #ffdd7e; }
-
-/* ---------------- ADMIN TOOLS ---------------- */
-.admin-tools { display:none; gap:8px; padding:10px; background:#1b1b38; }
-.admin-tools button { flex:1; padding:8px 12px; border:none; border-radius:8px; background:#fbb034; color:#14142b; font-weight:600; cursor:pointer; transition:0.3s; box-shadow:0 2px 10px rgba(251,176,52,0.5);}
-.admin-tools button:hover { transform:scale(1.05); box-shadow:0 4px 20px rgba(251,176,52,0.7); }
-
-/* ---------------- MESSAGES ---------------- */
-.messages { flex:1; padding:16px; overflow:auto; }
-.msg { margin-bottom:10px; display:flex; }
-.user.msg { justify-content:flex-end; }
-.admin.msg { justify-content:flex-start; }
-.bubble { max-width:70%; padding:14px 18px; border-radius:18px; position:relative; box-shadow:0 4px 15px rgba(0,0,0,0.5); transition:0.3s; }
-.user .bubble { background:#fbb034; color:#14142b; }
-.admin .bubble { background:#14142b; color:#fbb034; border:1px solid #fbb034; }
-.bubble span { display:block; font-size:11px; opacity:0.6; margin-top:4px; }
-.bubble button { margin-left:5px; background:#fff; color:#14142b; border:none; padding:2px 5px; border-radius:5px; cursor:pointer; font-size:10px; }
-.bubble button:hover { opacity:0.8; }
-
-/* ---------------- INPUT ---------------- */
-.input { display:flex; padding:12px; border-top:1px solid #333; }
-input { flex:1; padding:12px 16px; border-radius:25px; border:none; background:#2c2c55; color:#fff; outline:none; font-size:14px; }
-button#send { padding:10px 18px; margin-left:10px; border:none; border-radius:25px; background:#fbb034; color:#14142b; font-weight:600; cursor:pointer; transition:0.3s; }
-button#send:hover { transform:scale(1.05); }
-
-/* ---------------- NOTICE ---------------- */
-#notice { font-size:12px; color:#ff6b6b; padding-left:12px; margin-top:4px; }
-
-/* ---------------- SCROLLBAR ---------------- */
-.messages::-webkit-scrollbar, #users::-webkit-scrollbar { width:8px; }
-.messages::-webkit-scrollbar-thumb, #users::-webkit-scrollbar-thumb { background:#fbb034; border-radius:4px; }
-.messages::-webkit-scrollbar-track, #users::-webkit-scrollbar-track { background:#1b1b38; }
-
-/* ---------------- RESPONSIVE ---------------- */
-@media (max-width: 768px) {
-  .chat { flex-direction: column; height: 100vh; }
-  #users { width: 100%; height: 120px; display: flex; overflow-x: auto; border-right: none; border-bottom:1px solid #333; }
-  .user { flex: 0 0 auto; min-width: 120px; margin:0 5px; border-bottom:none; border-right:1px solid #333; }
-  .main { flex:1; }
-  .messages { padding:10px; }
-  .bubble { max-width: 80%; font-size: 13px; }
-  .input { flex-direction: column; }
-  input { width: 100%; margin-bottom: 6px; }
-  button#send { width: 100%; margin-left:0; }
-  .admin-tools { flex-direction: column; }
-  .admin-tools button { width: 100%; margin-bottom: 5px; }
-}
+body{margin:0;font-family:Poppins;background:#0f172a;color:#fff}
+.chat{display:flex;height:100vh}
+#users{width:240px;background:#020617;display:none;overflow:auto}
+.user{padding:10px;border-bottom:1px solid #1e293b;cursor:pointer}
+.user small{display:block;color:#94a3b8;font-size:11px}
+.main{flex:1;display:flex;flex-direction:column}
+.header{padding:14px;background:#d4af37;color:#000;font-weight:600}
+.admin-tools{display:none;gap:6px;padding:8px;background:#020617}
+.messages{flex:1;padding:12px;overflow:auto}
+.msg{margin-bottom:8px;display:flex}
+.user.msg{justify-content:flex-end}
+.admin.msg{justify-content:flex-start}
+.bubble{max-width:70%;padding:10px;border-radius:14px}
+.user .bubble{background:#2563eb}
+.admin .bubble{background:#f5d76e;color:#000}
+.bubble span{display:block;font-size:10px;opacity:.6}
+.input{display:flex;padding:10px;border-top:1px solid #1e293b}
+input{flex:1;padding:10px;border-radius:10px;border:none}
+button{padding:6px;border:none;border-radius:6px}
+#notice{font-size:12px;color:#f87171;padding-left:10px}
 </style>
 </head>
 
 <body>
 <div class="chat">
-  <div id="users">
-    <input type="text" id="searchUser" placeholder="Search user...">
-  </div>
+  <div id="users"></div>
   <div class="main">
-    <div class="header" id="title">MAHTAB SAFE CHAT Pro</div>
+    <div class="header" id="title">MAHTAB SAFE CHAT</div>
 
     <div class="admin-tools" id="adminTools">
       <button id="lockBtn">🔒 Lock</button>
@@ -248,7 +236,7 @@ button#send:hover { transform:scale(1.05); }
     <div id="notice"></div>
 
     <div class="input">
-      <input id="input" placeholder="Type your message...">
+      <input id="input" placeholder="Type message">
       <button id="send">Send</button>
     </div>
   </div>
